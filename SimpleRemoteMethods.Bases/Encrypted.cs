@@ -10,6 +10,10 @@ using System.Runtime.Serialization;
 
 namespace SimpleRemoteMethods.Bases
 {
+    /// <summary>
+    /// Class to encrypt/decrypt/serialize custom class
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     public class Encrypted<T>
     {
         public const string Divider = "<databegin>";
@@ -19,8 +23,14 @@ namespace SimpleRemoteMethods.Bases
             TypeNameHandling = TypeNameHandling.Auto
         };
 
+        /// <summary>
+        /// Random data for encryption
+        /// </summary>
         public string Salt { get; set; }
 
+        /// <summary>
+        /// Encrypted data
+        /// </summary>
         public string Data { get; set; }
 
         public Encrypted()
@@ -28,6 +38,11 @@ namespace SimpleRemoteMethods.Bases
             //do nothing
         }
 
+        /// <summary>
+        /// Create new object
+        /// </summary>
+        /// <param name="obj">Target object to encrypt</param>
+        /// <param name="secretKey">Secret code</param>
         public Encrypted(T obj, string secretKey) : this()
         {
             try
@@ -39,10 +54,15 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                RemoteException.Throw(RemoteExceptionData.DecryptionErrorCode, string.Empty, e);
+                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, string.Empty, e);
             }
         }
 
+        /// <summary>
+        /// Decrypt data and create object
+        /// </summary>
+        /// <param name="secretKey">Secret code</param>
+        /// <returns>Target class object</returns>
         public T Decrypt(string secretKey)
         {
             try
@@ -54,17 +74,22 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                RemoteException.Throw(RemoteExceptionData.DecryptionErrorCode, string.Empty, e);
+                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, string.Empty, e);
             }
         }
 
         public override string ToString() => Salt + Divider + Data;
 
+        /// <summary>
+        /// Create object by source string
+        /// </summary>
+        /// <param name="source">source string</param>
+        /// <returns></returns>
         public static Encrypted<T> FromString(string source)
         {
             var arr = source.Split(new[] { Divider }, StringSplitOptions.RemoveEmptyEntries);
             if (arr.Length != 2)
-                RemoteException.Throw(RemoteExceptionData.UnknownData);
+                throw RemoteException.Get(RemoteExceptionData.UnknownData);
             return new Encrypted<T>() {
                 Data = arr[1],
                 Salt = arr[0]

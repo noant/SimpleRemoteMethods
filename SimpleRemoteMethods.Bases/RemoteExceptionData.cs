@@ -4,8 +4,16 @@ using System.Text;
 
 namespace SimpleRemoteMethods.Bases
 {
+    /// <summary>
+    /// Exception or communication error of server or client
+    /// </summary>
     public sealed class RemoteExceptionData
     {
+        /// <summary>
+        /// Create new data
+        /// </summary>
+        /// <param name="code">Error code</param>
+        /// <param name="message">Custom message</param>
         public RemoteExceptionData(string code, string message = "")
         {
             Code = code;
@@ -14,7 +22,14 @@ namespace SimpleRemoteMethods.Bases
 
         public RemoteExceptionData() { }
 
+        /// <summary>
+        /// Custom message of error
+        /// </summary>
         public string Message { get; set; }
+
+        /// <summary>
+        /// Error code
+        /// </summary>
         public string Code { get; set; }
 
         public const string DecryptionErrorCode = "0";

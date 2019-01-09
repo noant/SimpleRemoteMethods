@@ -8,12 +8,17 @@ using static PCLCrypto.WinRTCrypto;
 
 namespace SimpleRemoteMethods
 {
+    /// <summary>
+    /// Encryption/decryption of a custom data using the AES algorithm
+    /// </summary>
     public class SecureEncoding
     {
         public readonly static Encoding TextEncoding = Encoding.UTF8;
 
+        private static readonly Random Rand = new Random();
         private static Dictionary<string, SecureEncoding> Cached = new Dictionary<string, SecureEncoding>();
         private static object Locker_GetSecureEncoding = new object();
+
         public static SecureEncoding GetSecureEncoding(string key)
         {
             lock (Locker_GetSecureEncoding)
@@ -24,6 +29,12 @@ namespace SimpleRemoteMethods
             }
         }
 
+        /// <summary>
+        /// Create the initialization vector for encryption
+        /// </summary>
+        /// <param name="salt">Random data</param>
+        /// <param name="secretKey">Secret key</param>
+        /// <returns>Initialization vector</returns>
         public static byte[] CreateIV(string salt, string secretKey)
         {
             var saltBytes = Convert.FromBase64String(salt);
@@ -54,6 +65,10 @@ namespace SimpleRemoteMethods
             return buff;
         }
 
+        /// <summary>
+        /// Create random 8 bytes
+        /// </summary>
+        /// <returns>8 random bytes in base64</returns>
         public static string CreateSalt()
         {
             var buff = new byte[8];
@@ -63,6 +78,10 @@ namespace SimpleRemoteMethods
 
         private string _secretKey;
 
+        /// <summary>
+        /// Create SecureEncoding object
+        /// </summary>
+        /// <param name="secretKey">Secret key</param>
         public SecureEncoding(string secretKey)
         {
             _secretKey = secretKey;
@@ -70,11 +89,23 @@ namespace SimpleRemoteMethods
 
         public SecureEncoding() : this("secret))01234567") { }
 
+        /// <summary>
+        /// Encrypt data with initialization vector
+        /// </summary>
+        /// <param name="data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Encrypted data</returns>
         public string Encrypt(string data, byte[] iv)
         {
             return Encrypt(TextEncoding.GetBytes(data), iv);
         }
 
+        /// <summary>
+        /// Encrypt data with initialization vector
+        /// </summary>
+        /// <param name="data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Encrypted data in bytes</returns>
         public string Encrypt(byte[] data, byte[] iv)
         {
             return EncryptInternal(data, iv);
@@ -87,6 +118,12 @@ namespace SimpleRemoteMethods
             return Convert.ToBase64String(CryptographicEngine.Encrypt(key, data, iv));
         }
 
+        /// <summary>
+        /// Decrypt data with initialization vector
+        /// </summary>
+        /// <param name="data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Decrypted data</returns>
         public string Decrypt(string data, byte[] iv)
         {
             var bytes = DecryptBytes(data, iv);
@@ -100,6 +137,12 @@ namespace SimpleRemoteMethods
             return CryptographicEngine.Decrypt(key, Convert.FromBase64String(data), iv);
         }
 
+        /// <summary>
+        /// Decrypt data with initialization vector
+        /// </summary>
+        /// <param name="data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Decrypted data in bytes</returns>
         public byte[] DecryptBytes(string data, byte[] iv)
         {
             return DecryptBytesInternal(data, iv);

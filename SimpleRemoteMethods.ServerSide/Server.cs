@@ -4,13 +4,17 @@ namespace SimpleRemoteMethods.ServerSide
 {
     public class Server<T>
     {
-        public Server(T objectMethods, bool useHttps = false, IAuthenticationValidator authentication, ITokenDistributor tokenDistributor)
+        public Server(T objectMethods)
         {
             Methods = objectMethods;
         }
 
         public T Methods { get; }
 
-        public bool UseHttps { get; }
+        public IAuthenticationValidator AuthenticationValidator = new AuthenticationValidatorStub();
+
+        public ITokenDistributor TokenDistributor = new StandardTokenDistributor();
+
+        public bool UseHttps { get; set; }
     }
 }
