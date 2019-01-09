@@ -24,13 +24,13 @@ namespace SimpleRemoteMethods.Bases
             var httpResponse = await SendRequest(uri, encrypted.ToString());
             var content = await (httpResponse.Content as StringContent)?.ReadAsStringAsync();
             if (content == null)
-                RemoteException.Throw(RemoteExceptionData.UnknownData);
+                throw RemoteException.Get(RemoteExceptionData.UnknownData);
             var encryptedResponse = Encrypted<Response>.FromString(content);
             var response = encryptedResponse.Decrypt(secretKey);
             if (response == null)
-                RemoteException.Throw(RemoteExceptionData.UnknownData);
+                throw RemoteException.Get(RemoteExceptionData.UnknownData);
             if (response.RemoteException != null)
-                RemoteException.Throw(response.RemoteException);
+                throw RemoteException.Get(response.RemoteException);
             return response;
         }
 
@@ -40,13 +40,13 @@ namespace SimpleRemoteMethods.Bases
             var httpResponse = await SendRequest(uri, encrypted.ToString());
             var content = await (httpResponse.Content as StringContent)?.ReadAsStringAsync();
             if (content == null)
-                RemoteException.Throw(RemoteExceptionData.UnknownData);
+                throw RemoteException.Get(RemoteExceptionData.UnknownData);
             var encryptedResponse = Encrypted<UserTokenResponse>.FromString(content);
             var response = encryptedResponse.Decrypt(secretKey);
             if (response == null)
-                RemoteException.Throw(RemoteExceptionData.UnknownData);
+                throw RemoteException.Get(RemoteExceptionData.UnknownData);
             if (response.RemoteException != null)
-                RemoteException.Throw(response.RemoteException);
+                throw RemoteException.Get(response.RemoteException);
             return response;
         }
     }
