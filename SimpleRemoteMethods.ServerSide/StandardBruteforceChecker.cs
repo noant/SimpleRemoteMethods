@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SimpleRemoteMethods.ServerSide
 {
-    public class StandardBruteforceChecker
+    public class StandardBruteforceChecker: IBruteforceChecker
     {
         public static ushort LoginHoursWaitTime = 2;
         public static ushort LoginTryLifetimeMinutes = 10;
