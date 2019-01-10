@@ -13,7 +13,7 @@ namespace SimpleRemoteMethods.Bases
         /// Unique requst id
         /// </summary>
         public string RequestId { get; set; }
-
+        
         /// <summary>
         /// Method called on server
         /// </summary>
@@ -28,5 +28,10 @@ namespace SimpleRemoteMethods.Bases
         /// Authentication user token
         /// </summary>
         public string UserToken { get; set; }
+
+        /// <summary>
+        /// Unique requst id repeat
+        /// </summary>
+        public string RequestIdRepeat { get; set; }
     }
 }

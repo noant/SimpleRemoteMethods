@@ -23,5 +23,10 @@ namespace SimpleRemoteMethods.Bases
         /// User password
         /// </summary>
         public string Password { get; set; }
+
+        /// <summary>
+        /// Unique id of request
+        /// </summary>
+        public string RequestIdRepeat { get; set; }
     }
 }

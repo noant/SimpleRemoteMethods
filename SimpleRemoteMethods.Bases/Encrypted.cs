@@ -13,7 +13,8 @@ namespace SimpleRemoteMethods.Bases
     /// <typeparam name="T"></typeparam>
     public class Encrypted<T>
     {
-        public const string Divider = "<databegin>";
+        public const string DividerDataBegin = "<databegin>";
+        public const string DividerSaltBegin = "<saltbegin>";
 
         public static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
         {
@@ -75,7 +76,7 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public override string ToString() => Salt + Divider + Data;
+        public override string ToString() => typeof(T).Name + DividerSaltBegin +  Salt + DividerDataBegin + Data;
 
         /// <summary>
         /// Create object by source string
@@ -84,13 +85,20 @@ namespace SimpleRemoteMethods.Bases
         /// <returns></returns>
         public static Encrypted<T> FromString(string source)
         {
-            var arr = source.Split(new[] { Divider }, StringSplitOptions.RemoveEmptyEntries);
+            var arr = source.Split(new[] { DividerDataBegin, DividerSaltBegin }, StringSplitOptions.RemoveEmptyEntries);
             if (arr.Length != 2)
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
             return new Encrypted<T>() {
-                Data = arr[1],
-                Salt = arr[0]
+                Data = arr[2],
+                Salt = arr[1]
             };
+        }
+
+        public static bool IsClass(string source)
+        {
+            var t = typeof(T);
+            var arr = source.Split(new[] { DividerSaltBegin }, StringSplitOptions.RemoveEmptyEntries);
+            return arr[0] == t.Name;
         }
     }
 }

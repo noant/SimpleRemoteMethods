@@ -10,6 +10,7 @@ namespace SimpleRemoteMethods.Bases
     public sealed class RemoteException: Exception
     {
         public static RemoteException Get(string code, string message = "", Exception inner = null) => new RemoteException(new RemoteExceptionData(code, message), inner);
+        public static RemoteException Get(string code, string user, string clientIp, Exception inner = null) => new RemoteException(new RemoteExceptionData(code, string.Format("User: {0}, {1}", user, clientIp)), inner);
         public static RemoteException Get(RemoteExceptionData data) => new RemoteException(data);
 
         /// <summary>
