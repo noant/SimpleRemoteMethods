@@ -20,9 +20,14 @@ namespace SimpleRemoteMethods.Bases
         public string Method { get; set; }
 
         /// <summary>
-        /// Methof input parameters
+        /// Method input parameters
         /// </summary>
         public object[] Parameters { get; set; }
+
+        /// <summary>
+        /// Name of object class that method returns
+        /// </summary>
+        public string ReturnTypeName { get; set; }
 
         /// <summary>
         /// Authentication user token

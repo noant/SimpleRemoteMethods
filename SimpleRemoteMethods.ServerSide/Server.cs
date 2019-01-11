@@ -22,6 +22,11 @@ namespace SimpleRemoteMethods.ServerSide
         }
 
         /// <summary>
+        /// Max synchronous connections
+        /// </summary>
+        public ushort MaxConcurrentCalls { get; set; } = 20;
+
+        /// <summary>
         /// Object that contains methods for remote use
         /// </summary>
         public T Methods { get; }
@@ -29,27 +34,27 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// User/password validator
         /// </summary>
-        public IAuthenticationValidator AuthenticationValidator = new AuthenticationValidatorStub();
+        public IAuthenticationValidator AuthenticationValidator { get; set; } = new AuthenticationValidatorStub();
 
         /// <summary>
         /// Logic for user token destribution
         /// </summary>
-        public ITokenDistributor TokenDistributor = new StandardTokenDistributor();
+        public ITokenDistributor TokenDistributor { get; set; } = new StandardTokenDistributor();
 
         /// <summary>
         /// Bruteforce checker by login
         /// </summary>
-        public IBruteforceChecker BruteforceCheckerByLogin = new StandardBruteforceChecker();
+        public IBruteforceChecker BruteforceCheckerByLogin { get; set; } = new StandardBruteforceChecker();
 
         /// <summary>
         /// Bruteforce checker by ip
         /// </summary>
-        public IBruteforceChecker BruteforceCheckerByIpAddress = new StandardBruteforceChecker();
+        public IBruteforceChecker BruteforceCheckerByIpAddress { get; set; } = new StandardBruteforceChecker();
 
         /// <summary>
         /// Object for tracking and checking request id
         /// </summary>
-        public RequestIdChecker RequestChecker = new RequestIdChecker();
+        public RequestIdChecker RequestChecker { get; set; } = new RequestIdChecker();
 
         /// <summary>
         /// SSL mode
@@ -74,54 +79,110 @@ namespace SimpleRemoteMethods.ServerSide
         [ThreadStatic]
         private RequestContext _currentRequestContext;
         private HttpListener _listener;
+        private bool _started = false;
+        private bool _startedInternal = false;
+        private ushort _connectionsCount = 0;
+        private MethodsCaller<T> _caller = new MethodsCaller<T>();
 
         /// <summary>
         /// Start http server asynchronously
         /// </summary>
         public async void StartAsync()
         {
+            _started = true;
+            _listener = new HttpListener();
+            _listener.Prefixes.Add(string.Format("{0}://+:{1}/", UseHttps ? "https" : "http", Port));
+            await StartAsyncInternal();
+        }
+
+        private async Task StartAsyncInternal()
+        {
+            _startedInternal = true;
             await new Task(() => {
-                _listener = new HttpListener();
-                _listener.Prefixes.Add(string.Format("{0}://+:{1}/", UseHttps ? "https" : "http", Port));
                 _listener.Start();
-                while (true)
+                while (_started && _startedInternal)
                 {
                     var context = _listener.GetContext();
                     Task.Run(() => HandleContext(context));
                 }
-            }, 
+            },
             TaskCreationOptions.LongRunning);
         }
 
+        public void Stop()
+        {
+            _started = false;
+            StopInternal();
+        }
+
+        private void StopInternal() => _listener.Stop();
+
         private void HandleContext(HttpListenerContext context)
         {
-            var clientIp = context.Request.RemoteEndPoint.ToString();
+            HandleConnectionBegin();
 
-            if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
-                throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "/", clientIp);
-
-            var buff = new byte[context.Request.InputStream.Length];
-            context.Request.InputStream.Read(buff, 0, buff.Length);
-            var sourceStr = Encoding.UTF8.GetString(buff);
-            if (Encrypted<Request>.IsClass(sourceStr))
+            try
             {
-                var request = Encrypted<Request>.FromString(sourceStr).Decrypt(SecretCode);
+                var clientIp = context.Request.RemoteEndPoint.ToString();
 
-                if (request.RequestId != request.RequestIdRepeat ||
-                    !RequestChecker.IsNewRequest(request.RequestId))
-                    throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+                // Handle bruteforce suspicion by ip
+                if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
+                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "/", clientIp);
 
-                if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
-                    _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
+                var buff = new byte[context.Request.InputStream.Length];
+                context.Request.InputStream.Read(buff, 0, buff.Length);
+                var sourceStr = Encoding.UTF8.GetString(buff);
+
+                // Ef encrypted data is Request
+                if (Encrypted<Request>.IsClass(sourceStr))
+                {
+                    var request = Encrypted<Request>.FromString(sourceStr).Decrypt(SecretCode);
+
+                    // Handle request id fabrication
+                    if (request.RequestId != request.RequestIdRepeat ||
+                        !RequestChecker.IsNewRequest(request.RequestId))
+                        throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+
+                    // Authentication by token
+                    if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
+                        _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
+                    else
+                        throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+                }
+                // If ecnrypted data is UserTokenRequest
+                else if (Encrypted<UserTokenRequest>.IsClass(sourceStr))
+                {
+
+                }
                 else
-                    throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+                    throw RemoteException.Get(RemoteExceptionData.UnknownData, clientIp);
             }
-            else if (Encrypted<UserTokenRequest>.IsClass(sourceStr))
+            catch (RemoteException remoteException)
             {
 
             }
-            else
-                throw RemoteException.Get(RemoteExceptionData.UnknownData, clientIp);
+            catch (Exception exception)
+            {
+
+            }
+            finally
+            {
+                HandleConnectionEnd();
+            }
+        }
+
+        private void HandleConnectionBegin()
+        {
+            _connectionsCount++;
+            if (_connectionsCount >= MaxConcurrentCalls)
+                StopInternal();
+        }
+
+        private async void HandleConnectionEnd()
+        {
+            _connectionsCount--;
+            if (_connectionsCount < MaxConcurrentCalls && !_startedInternal && _started)
+                await StartAsyncInternal();
         }
     }
 }
