@@ -148,6 +148,19 @@ namespace SimpleRemoteMethods.ServerSide
                         _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
                     else
                         throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+                    
+                    // Try to get method info and call
+                    var callInfo = _caller.Call(Methods, request.Method, request.Parameters, request.ReturnTypeName);
+
+                    // Check if method not exist
+                    if (callInfo.MethodNotFound)
+                        throw RemoteException.Get(RemoteExceptionData.MethodNotFound, tokenInfo.UserName, clientIp);
+
+                    // If target method threw an exception
+                    if (callInfo.CallException != null)
+                        throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
+
+                    SendResponse(callInfo.Result, request.Method, context);
                 }
                 // If ecnrypted data is UserTokenRequest
                 else if (Encrypted<UserTokenRequest>.IsClass(sourceStr))
@@ -159,16 +172,37 @@ namespace SimpleRemoteMethods.ServerSide
             }
             catch (RemoteException remoteException)
             {
-
+                SendResponse(remoteException.Data, string.Empty, context);
             }
             catch (Exception exception)
             {
-
+                SendResponse(new RemoteExceptionData(RemoteExceptionData.InternalServerError, exception.Message), string.Empty, context);
             }
             finally
             {
                 HandleConnectionEnd();
             }
+        }
+
+        private void SendResponse(object result, string method, HttpListenerContext context)
+        {
+            SendResponse(
+                new Response() { Result = result, Method = method, ServerTime = DateTime.Now },
+                context);
+        }
+        
+        private void SendResponse(RemoteExceptionData exceptionData, string method, HttpListenerContext context)
+        {
+            SendResponse(
+                new Response() { RemoteException = exceptionData, Method = method, ServerTime = DateTime.Now },
+                context);
+        }
+
+        private void SendResponse(Response response, HttpListenerContext context)
+        {
+            var encryptedResponse = new Encrypted<Response>(response, SecretCode);
+            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            context.Response.OutputStream.Close();
         }
 
         private void HandleConnectionBegin()
