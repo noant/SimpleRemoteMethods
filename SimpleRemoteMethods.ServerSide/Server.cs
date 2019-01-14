@@ -300,21 +300,24 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendErrorResponse(ErrorResponse response, HttpListenerContext context)
         {
             var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
-            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }
 
         private void SendResponse(Response response, HttpListenerContext context)
         {
             var encryptedResponse = new Encrypted<Response>(response, SecretCode);
-            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }
 
         private void SendUserTokenResponse(UserTokenResponse tokenResponse, HttpListenerContext context)
         {
             var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
-            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }
 
