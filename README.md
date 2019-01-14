@@ -1,4 +1,4 @@
 # SimpleRemoteMethods
-A project that allows you to easily create a secure client-server part of any project.
+A project that allows you to easily create a secure client-server part of project.
 
 STATE: NOT READY
