@@ -72,6 +72,21 @@ namespace SimpleRemoteMethods.ServerSide
         public string SecretCode { get; set; }
 
         /// <summary>
+        /// Raises when need to write log
+        /// </summary>
+        public event EventHandler<LogRecordEventArgs> LogRecord;
+
+        /// <summary>
+        /// Raises before server start
+        /// </summary>
+        public event EventHandler<object> BeforeServerStart;
+
+        /// <summary>
+        /// Raises after server stopped
+        /// </summary>
+        public event EventHandler<object> AfterServerStopped;
+
+        /// <summary>
         /// Current thread request
         /// </summary>
         public RequestContext CurrentRequestContext => _currentRequestContext;
@@ -89,10 +104,14 @@ namespace SimpleRemoteMethods.ServerSide
         /// </summary>
         public async void StartAsync()
         {
+            BeforeServerStart?.Invoke(this, this);
+
             _started = true;
             _listener = new HttpListener();
             _listener.Prefixes.Add(string.Format("{0}://+:{1}/", UseHttps ? "https" : "http", Port));
             await StartAsyncInternal();
+
+            AfterServerStopped?.Invoke(this, this);
         }
 
         private async Task StartAsyncInternal()
@@ -125,6 +144,8 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 var clientIp = context.Request.RemoteEndPoint.ToString();
 
+                RaiseLogRecord(LogType.Debug, string.Format("Client {0} connected...", clientIp));
+
                 // Handle bruteforce suspicion by ip
                 if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
                     throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "/", clientIp);
@@ -137,51 +158,90 @@ namespace SimpleRemoteMethods.ServerSide
                 if (Encrypted<Request>.IsClass(sourceStr))
                 {
                     var request = Encrypted<Request>.FromString(sourceStr).Decrypt(SecretCode);
-
-                    // Handle request id fabrication
-                    if (request.RequestId != request.RequestIdRepeat ||
-                        !RequestChecker.IsNewRequest(request.RequestId))
-                        throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
-
-                    // Authentication by token
-                    if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
-                        _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
-                    else
-                        throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
-                    
-                    // Try to get method info and call
-                    var callInfo = _caller.Call(Methods, request.Method, request.Parameters, request.ReturnTypeName);
-
-                    // Check if method not exist
-                    if (callInfo.MethodNotFound)
-                        throw RemoteException.Get(RemoteExceptionData.MethodNotFound, tokenInfo.UserName, clientIp);
-
-                    // If target method threw an exception
-                    if (callInfo.CallException != null)
-                        throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
-
-                    SendResponse(callInfo.Result, request.Method, context);
+                    HandleRequest(request, context);
                 }
                 // If ecnrypted data is UserTokenRequest
                 else if (Encrypted<UserTokenRequest>.IsClass(sourceStr))
                 {
-
+                    var request = Encrypted<UserTokenRequest>.FromString(sourceStr).Decrypt(SecretCode);
+                    HandleUserTokenRequest(request, context);
                 }
                 else
                     throw RemoteException.Get(RemoteExceptionData.UnknownData, clientIp);
             }
             catch (RemoteException remoteException)
             {
-                SendResponse(remoteException.Data, string.Empty, context);
+                RaiseLogRecord(LogType.Info, remoteException);
+                SendErrorResponse(remoteException.Data, context);
             }
             catch (Exception exception)
             {
-                SendResponse(new RemoteExceptionData(RemoteExceptionData.InternalServerError, exception.Message), string.Empty, context);
+                RaiseLogRecord(LogType.Error, exception);
+                SendErrorResponse(new RemoteExceptionData(RemoteExceptionData.InternalServerError, exception.Message), context);
             }
             finally
             {
                 HandleConnectionEnd();
             }
+        }
+
+        private void HandleRequest(Request request, HttpListenerContext context)
+        {
+            var clientIp = context.Request.RemoteEndPoint.ToString();
+
+            // Handle request id fabrication
+            if (request.RequestId != request.RequestIdRepeat ||
+                !RequestChecker.IsNewRequest(request.RequestId))
+                throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+
+            RaiseLogRecord(LogType.Debug, string.Format("Ip {0} request id {1} normal...", clientIp, request.RequestId));
+
+            // Authentication by token
+            if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
+                _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
+            else
+                throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+
+            RaiseLogRecord(LogType.Debug, string.Format("{0} with ip {1} connected...", tokenInfo.UserName, clientIp));
+
+            // Try to get method info and call
+            var callInfo = _caller.Call(Methods, request.Method, request.Parameters, request.ReturnTypeName);
+
+            // Check if method not exist
+            if (callInfo.MethodNotFound)
+                throw RemoteException.Get(RemoteExceptionData.MethodNotFound, tokenInfo.UserName, clientIp);
+
+            // If target method threw an exception
+            if (callInfo.CallException != null)
+                throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
+
+            SendResponse(callInfo.Result, request.Method, context);
+
+            RaiseLogRecord(LogType.Debug, string.Format("User {0} with ip {1} executed method {2}...", tokenInfo.UserName, clientIp, request.Method));
+        }
+
+        private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
+        {
+            var clientIp = context.Request.RemoteEndPoint.ToString();
+
+            // Handle request id fabrication
+            if (request.RequestId != request.RequestIdRepeat ||
+                !RequestChecker.IsNewRequest(request.RequestId))
+                throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+
+            RaiseLogRecord(LogType.Debug, string.Format("Ip {0} request id {1} normal (user token request)...", clientIp, request.RequestId));
+
+            // Authentication by login/password
+            if (!AuthenticationValidator.Authenticate(request.Login, request.Password))
+                throw RemoteException.Get(RemoteExceptionData.LoginOrPasswordInvalid, clientIp);
+
+            RaiseLogRecord(LogType.Debug, string.Format("User {0} ({1}) password authentication success...", request.Login, clientIp));
+
+            var newToken = TokenDistributor.RequestToken(request.Login, clientIp);
+
+            SendUserTokenResponse(newToken, context);
+
+            RaiseLogRecord(LogType.Info, string.Format("Server issued new token {0} for user {1} with ip {2}...", newToken, request.Login, clientIp));
         }
 
         private void SendResponse(object result, string method, HttpListenerContext context)
@@ -191,11 +251,25 @@ namespace SimpleRemoteMethods.ServerSide
                 context);
         }
         
-        private void SendResponse(RemoteExceptionData exceptionData, string method, HttpListenerContext context)
+        private void SendErrorResponse(RemoteExceptionData exceptionData, HttpListenerContext context)
         {
-            SendResponse(
-                new Response() { RemoteException = exceptionData, Method = method, ServerTime = DateTime.Now },
+            SendErrorResponse(
+                new ErrorResponse() { ErrorData = exceptionData },
                 context);
+        }
+
+        private void SendUserTokenResponse(string newToken, HttpListenerContext context)
+        {
+            SendUserTokenResponse(
+                new UserTokenResponse() { UserToken = newToken },
+                context);
+        }
+
+        private void SendErrorResponse(ErrorResponse response, HttpListenerContext context)
+        {
+            var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
+            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            context.Response.OutputStream.Close();
         }
 
         private void SendResponse(Response response, HttpListenerContext context)
@@ -205,18 +279,35 @@ namespace SimpleRemoteMethods.ServerSide
             context.Response.OutputStream.Close();
         }
 
+        private void SendUserTokenResponse(UserTokenResponse tokenResponse, HttpListenerContext context)
+        {
+            var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
+            context.Response.OutputStream.Write(Encoding.UTF8.GetBytes(encryptedResponse.ToString()));
+            context.Response.OutputStream.Close();
+        }
+
         private void HandleConnectionBegin()
         {
             _connectionsCount++;
             if (_connectionsCount >= MaxConcurrentCalls)
+            {
+                RaiseLogRecord(LogType.Info, string.Format("Too many connections ({0}). Server suspend.", _connectionsCount));
                 StopInternal();
+            }
         }
 
         private async void HandleConnectionEnd()
         {
             _connectionsCount--;
             if (_connectionsCount < MaxConcurrentCalls && !_startedInternal && _started)
+            {
+                RaiseLogRecord(LogType.Info, string.Format("Connections count normal. Server continues to work.", _connectionsCount));
                 await StartAsyncInternal();
+            }
         }
+
+        private void RaiseLogRecord(LogType type, Exception exception) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, exception));
+
+        private void RaiseLogRecord(LogType type, string message) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, message));
     }
 }

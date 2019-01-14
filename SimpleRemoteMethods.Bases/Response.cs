@@ -20,11 +20,6 @@ namespace SimpleRemoteMethods.Bases
         public object Result { get; set; }
 
         /// <summary>
-        /// Error state
-        /// </summary>
-        public RemoteExceptionData RemoteException { get; set; }
-
-        /// <summary>
         /// Server time
         /// </summary>
         public DateTime ServerTime { get; set; }

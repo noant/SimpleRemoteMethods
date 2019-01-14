@@ -13,10 +13,5 @@ namespace SimpleRemoteMethods.Bases
         /// New toke for user
         /// </summary>
         public string UserToken { get; set; }
-
-        /// <summary>
-        /// Error from server
-        /// </summary>
-        public RemoteExceptionData RemoteException { get; set; }
     }
 }
