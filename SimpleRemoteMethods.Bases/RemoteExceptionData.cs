@@ -40,5 +40,6 @@ namespace SimpleRemoteMethods.Bases
         public const string BruteforceSuspicion = "6";
         public const string MethodNotFound = "7";
         public const string InternalServerError = "8";
+        public const string ConnectionError = "9";
     }
 }

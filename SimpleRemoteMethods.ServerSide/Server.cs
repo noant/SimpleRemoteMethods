@@ -16,15 +16,26 @@ namespace SimpleRemoteMethods.ServerSide
         /// Create server
         /// </summary>
         /// <param name="objectMethods">Object that contains methods for remote use</param>
-        public Server(T objectMethods)
+        public Server(T objectMethods, bool ssl, ushort port)
         {
             Methods = objectMethods;
+            Ssl = ssl;
+            Port = port;
         }
 
         /// <summary>
         /// Max synchronous connections
         /// </summary>
-        public ushort MaxConcurrentCalls { get; set; } = 20;
+        public ushort MaxConcurrentCalls
+        {
+            get => _maxConcurrentCalls;
+            set
+            {
+                if (_maxConcurrentCalls < 1)
+                    throw new InvalidOperationException("MaxConcurrentCalls cannot be less than 1");
+                _maxConcurrentCalls = value;
+            }
+        }
 
         /// <summary>
         /// Object that contains methods for remote use
@@ -34,42 +45,56 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// User/password validator
         /// </summary>
-        public IAuthenticationValidator AuthenticationValidator { get; set; } = new AuthenticationValidatorStub();
-
+        public IAuthenticationValidator AuthenticationValidator
+        {
+            get => _authenticationValidator;
+            set => _authenticationValidator = value ?? throw new ArgumentNullException("AuthenticationValidator cannot be null");
+        }
         /// <summary>
         /// Logic for user token destribution
         /// </summary>
-        public ITokenDistributor TokenDistributor { get; set; } = new StandardTokenDistributor();
-
+        public ITokenDistributor TokenDistributor
+        {
+            get => _tokenDistributor;
+            set => _tokenDistributor = value ?? throw new ArgumentNullException("AuthenticationValidator cannot be null");
+        }
         /// <summary>
         /// Bruteforce checker by login
         /// </summary>
-        public IBruteforceChecker BruteforceCheckerByLogin { get; set; } = new StandardBruteforceChecker();
-
+        public IBruteforceChecker BruteforceCheckerByLogin
+        {
+            get => _bruteforceCheckerByLogin;
+            set => _bruteforceCheckerByLogin = value ?? throw new ArgumentNullException("BruteforceCheckerByLogin cannot be null");
+        }
         /// <summary>
         /// Bruteforce checker by ip
         /// </summary>
-        public IBruteforceChecker BruteforceCheckerByIpAddress { get; set; } = new StandardBruteforceChecker();
-
+        public IBruteforceChecker BruteforceCheckerByIpAddress
+        {
+            get => _bruteforceCheckerByIpAddress;
+            set => _bruteforceCheckerByIpAddress = value ?? throw new ArgumentNullException("BruteforceCheckerByIpAddress cannot be null");
+        }
         /// <summary>
         /// Object for tracking and checking request id
         /// </summary>
-        public RequestIdChecker RequestChecker { get; set; } = new RequestIdChecker();
-
+        public RequestIdChecker RequestChecker {
+            get => _requestChecker;
+            set => _requestChecker = value ?? throw new ArgumentNullException("RequestChecker cannot be null");
+        }
         /// <summary>
-        /// SSL mode
+        /// Use HTTPS
         /// </summary>
-        public bool UseHttps { get; set; }
+        public bool Ssl { get; }
 
         /// <summary>
         /// Server port
         /// </summary>
-        public ushort Port { get; set; }
+        public ushort Port { get; }
 
         /// <summary>
         /// Secret code that encrypts all data
         /// </summary>
-        public string SecretCode { get; set; }
+        public string SecretCode { get; }
 
         /// <summary>
         /// Raises when need to write log
@@ -98,6 +123,12 @@ namespace SimpleRemoteMethods.ServerSide
         private bool _startedInternal = false;
         private ushort _connectionsCount = 0;
         private MethodsCaller<T> _caller = new MethodsCaller<T>();
+        private ushort _maxConcurrentCalls = 20;
+        private IAuthenticationValidator _authenticationValidator = new AuthenticationValidatorStub();
+        private ITokenDistributor _tokenDistributor = new StandardTokenDistributor();
+        private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
+        private IBruteforceChecker _bruteforceCheckerByIpAddress = new StandardBruteforceChecker();
+        private RequestIdChecker _requestChecker = new RequestIdChecker();
 
         /// <summary>
         /// Start http server asynchronously
@@ -108,7 +139,7 @@ namespace SimpleRemoteMethods.ServerSide
 
             _started = true;
             _listener = new HttpListener();
-            _listener.Prefixes.Add(string.Format("{0}://+:{1}/", UseHttps ? "https" : "http", Port));
+            _listener.Prefixes.Add(string.Format("{0}://+:{1}/", Ssl ? "https" : "http", Port));
             await StartAsyncInternal();
 
             AfterServerStopped?.Invoke(this, this);
@@ -117,7 +148,8 @@ namespace SimpleRemoteMethods.ServerSide
         private async Task StartAsyncInternal()
         {
             _startedInternal = true;
-            await new Task(() => {
+            await new Task(() =>
+            {
                 _listener.Start();
                 while (_started && _startedInternal)
                 {
@@ -250,7 +282,7 @@ namespace SimpleRemoteMethods.ServerSide
                 new Response() { Result = result, Method = method, ServerTime = DateTime.Now },
                 context);
         }
-        
+
         private void SendErrorResponse(RemoteExceptionData exceptionData, HttpListenerContext context)
         {
             SendErrorResponse(
