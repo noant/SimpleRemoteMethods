@@ -86,7 +86,7 @@ namespace SimpleRemoteMethods.Bases
         public static Encrypted<T> FromString(string source)
         {
             var arr = source.Split(new[] { DividerDataBegin, DividerSaltBegin }, StringSplitOptions.RemoveEmptyEntries);
-            if (arr.Length != 2)
+            if (arr.Length != 3)
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
             return new Encrypted<T>() {
                 Data = arr[2],

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -15,7 +16,8 @@ namespace SimpleRemoteMethods.Bases
             {
                 var client = new HttpClient();
                 var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Content = new StringContent(content);
+                request.Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+                request.Method = HttpMethod.Post;
                 var response = await client.SendAsync(request);
                 return response;
             }
@@ -29,7 +31,7 @@ namespace SimpleRemoteMethods.Bases
         {
             var encrypted = new Encrypted<Request>(request, secretKey);
             var httpResponse = await SendRequest(uri, encrypted.ToString());
-            var content = await (httpResponse.Content as StringContent)?.ReadAsStringAsync();
+            var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
             if (content == null)
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
 
@@ -57,7 +59,7 @@ namespace SimpleRemoteMethods.Bases
         {
             var encrypted = new Encrypted<UserTokenRequest>(request, secretKey);
             var httpResponse = await SendRequest(uri, encrypted.ToString());
-            var content = await (httpResponse.Content as StringContent)?.ReadAsStringAsync();
+            var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
             if (content == null)
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
 

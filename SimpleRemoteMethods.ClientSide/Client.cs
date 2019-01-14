@@ -95,7 +95,7 @@ namespace SimpleRemoteMethods.ClientSide
         public async Task<T> CallMethod<T>(string methodName, params object[] parameters)
         {
             if (string.IsNullOrEmpty(_myToken))
-                RefreshToken();
+                await RefreshToken();
 
             var request = PrepareRequest(methodName, typeof(T).FullName, parameters);
             var response = await HttpUtils.SendRequest(CallUri, request, SecretKey);
@@ -114,14 +114,14 @@ namespace SimpleRemoteMethods.ClientSide
         public async void CallMethod(string methodName, params object[] parameters)
         {
             if (string.IsNullOrEmpty(_myToken))
-                RefreshToken();
+                await RefreshToken();
 
             var request = PrepareRequest(methodName, typeof(void).FullName, parameters);
             var response = await HttpUtils.SendRequest(CallUri, request, SecretKey);
             LastCallServerTime = response.ServerTime;
         }
 
-        private async void RefreshToken()
+        private async Task RefreshToken()
         {
             var request = new UserTokenRequest();
             request.Login = Login;

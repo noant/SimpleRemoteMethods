@@ -1,5 +1,6 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
+using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -16,11 +17,12 @@ namespace SimpleRemoteMethods.ServerSide
         /// Create server
         /// </summary>
         /// <param name="objectMethods">Object that contains methods for remote use</param>
-        public Server(T objectMethods, bool ssl, ushort port)
+        public Server(T objectMethods, bool ssl, ushort port, string secretCode)
         {
             Methods = objectMethods;
             Ssl = ssl;
             Port = port;
+            SecretCode = secretCode;
         }
 
         /// <summary>
@@ -107,6 +109,11 @@ namespace SimpleRemoteMethods.ServerSide
         public event EventHandler<object> BeforeServerStart;
 
         /// <summary>
+        /// Raises after server started
+        /// </summary>
+        public event EventHandler<object> AfterServerStarted;
+
+        /// <summary>
         /// Raises after server stopped
         /// </summary>
         public event EventHandler<object> AfterServerStopped;
@@ -133,31 +140,41 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// Start http server asynchronously
         /// </summary>
-        public async void StartAsync()
+        public void StartAsync()
         {
             BeforeServerStart?.Invoke(this, this);
 
-            _started = true;
             _listener = new HttpListener();
             _listener.Prefixes.Add(string.Format("{0}://+:{1}/", Ssl ? "https" : "http", Port));
-            await StartAsyncInternal();
+            _listener.Prefixes.Add(string.Format("{0}://localhost:{1}/", Ssl ? "https" : "http", Port));
+            _listener.Prefixes.Add(string.Format("{0}://127.0.0.1:{1}/", Ssl ? "https" : "http", Port));
+            StartAsyncInternal();
 
             AfterServerStopped?.Invoke(this, this);
         }
 
-        private async Task StartAsyncInternal()
+        private void StartAsyncInternal()
         {
-            _startedInternal = true;
-            await new Task(() =>
+            new Task(() =>
             {
                 _listener.Start();
+
+                if (!_started)
+                {
+                    AfterServerStarted?.Invoke(this, this);
+                    RaiseLogRecord(LogType.Info, string.Format("Server {0}://localhost:{1} started...", Ssl ? "https" : "http", Port));
+                }
+
+                _started = true;
+                _startedInternal = true;
                 while (_started && _startedInternal)
                 {
                     var context = _listener.GetContext();
                     Task.Run(() => HandleContext(context));
                 }
             },
-            TaskCreationOptions.LongRunning);
+            TaskCreationOptions.LongRunning)
+            .Start();
         }
 
         public void Stop()
@@ -174,7 +191,7 @@ namespace SimpleRemoteMethods.ServerSide
 
             try
             {
-                var clientIp = context.Request.RemoteEndPoint.ToString();
+                var clientIp = context.Request.UserHostAddress;
 
                 RaiseLogRecord(LogType.Debug, string.Format("Client {0} connected...", clientIp));
 
@@ -182,11 +199,11 @@ namespace SimpleRemoteMethods.ServerSide
                 if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
                     throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "/", clientIp);
 
-                var buff = new byte[context.Request.InputStream.Length];
-                context.Request.InputStream.Read(buff, 0, buff.Length);
-                var sourceStr = Encoding.UTF8.GetString(buff);
+                string sourceStr = null;
+                using (var sr = new StreamReader(context.Request.InputStream))
+                    sourceStr = sr.ReadToEnd();
 
-                // Ef encrypted data is Request
+                // If encrypted data is Request
                 if (Encrypted<Request>.IsClass(sourceStr))
                 {
                     var request = Encrypted<Request>.FromString(sourceStr).Decrypt(SecretCode);
@@ -219,7 +236,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleRequest(Request request, HttpListenerContext context)
         {
-            var clientIp = context.Request.RemoteEndPoint.ToString();
+            var clientIp = context.Request.UserHostAddress;
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
@@ -254,7 +271,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
         {
-            var clientIp = context.Request.RemoteEndPoint.ToString();
+            var clientIp = context.Request.UserHostAddress;
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
@@ -331,13 +348,13 @@ namespace SimpleRemoteMethods.ServerSide
             }
         }
 
-        private async void HandleConnectionEnd()
+        private void HandleConnectionEnd()
         {
             _connectionsCount--;
             if (_connectionsCount < MaxConcurrentCalls && !_startedInternal && _started)
             {
                 RaiseLogRecord(LogType.Info, string.Format("Connections count normal. Server continues to work.", _connectionsCount));
-                await StartAsyncInternal();
+                StartAsyncInternal();
             }
         }
 

@@ -1,5 +1,4 @@
-﻿using DevOne.Security.Cryptography.BCrypt;
-using PCLCrypto;
+﻿using PCLCrypto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -37,12 +36,14 @@ namespace SimpleRemoteMethods
         /// <returns>Initialization vector</returns>
         public static byte[] CreateIV(string salt, string secretKey)
         {
-            var saltBytes = Convert.FromBase64String(salt);
+            var saltBytes = Encoding.UTF8.GetBytes(salt);
 
-            var secretKeyHashBytes = TextEncoding.GetBytes(BCryptHelper.HashPassword(secretKey, salt));
+            var hash = BCrypt.Net.BCrypt.HashPassword(secretKey, salt);
 
-            //calculate offset of secretKeyHashBytes by summ of 
-            //first secretKeyByte and first salt byte in proportion to 256
+            var secretKeyHashBytes = TextEncoding.GetBytes(hash);
+
+            // Calculate offset of secretKeyHashBytes by summ of 
+            // first secretKeyByte and first salt byte in proportion to 256
             var offset = (int)(((secretKeyHashBytes[0] + saltBytes[0]) / 256d) * 16);
             if (offset > 16)
                 offset -= 16;
@@ -66,15 +67,10 @@ namespace SimpleRemoteMethods
         }
 
         /// <summary>
-        /// Create random 8 bytes
+        /// Create BCrypt salt
         /// </summary>
-        /// <returns>8 random bytes in base64</returns>
-        public static string CreateSalt()
-        {
-            var buff = new byte[8];
-            Rand.NextBytes(buff);
-            return Convert.ToBase64String(buff);
-        }
+        /// <returns>Generate random chars</returns>
+        public static string CreateSalt() => BCrypt.Net.BCrypt.GenerateSalt();
 
         private string _secretKey;
 

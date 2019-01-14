@@ -17,6 +17,9 @@ namespace SimpleRemoteMethods.ServerSide
             var remoteAttribute = typeof(RemoteAttribute);
             var remoteMethods = allMethods.Where(x => x.CustomAttributes.Any(z => z.AttributeType == remoteAttribute)).ToArray();
 
+            if (remoteMethods.Any(x => x.IsGenericMethod))
+                throw new MethodNotSupportedException("Target methods cannot be generic");
+
             if (remoteMethods.Any(x => x.GetParameters().Any(z => !z.IsIn)))
                 throw new MethodNotSupportedException("Target methods cannot contains out or ref parameters");
         }

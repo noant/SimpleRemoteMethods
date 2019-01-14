@@ -26,14 +26,15 @@ namespace SimpleRemoteMethods.ServerSide
         public string RequestToken(string userName, string clientIp)
         {
             var existingToken = GetTokenInfo(userName, clientIp);
-            if (existingToken == null)
-            {
-                existingToken = new TokenInfo();
-                existingToken.ClientIp = clientIp;
-                existingToken.UserName = userName;
-            }
+            if (existingToken != null)
+                _tokens.Remove(existingToken.Token);
+
+            existingToken = new TokenInfo();
+            existingToken.ClientIp = clientIp;
+            existingToken.UserName = userName;
             existingToken.Token = CreateNewTokenString();
             existingToken.DistributionDate = DateTime.Now;
+            _tokens.Add(existingToken.Token, existingToken);
             return existingToken.Token;
         }
 
