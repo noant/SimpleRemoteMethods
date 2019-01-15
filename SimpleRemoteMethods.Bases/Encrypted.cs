@@ -18,7 +18,7 @@ namespace SimpleRemoteMethods.Bases
 
         public static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
         {
-            TypeNameHandling = TypeNameHandling.Auto
+            TypeNameHandling = TypeNameHandling.All
         };
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace SimpleRemoteMethods.Bases
             {
                 Salt = SecureEncoding.CreateSalt();
                 var iv = SecureEncoding.CreateIV(Salt, secretKey);
-                var rawString = JsonConvert.SerializeObject(obj);
+                var rawString = JsonConvert.SerializeObject(obj, SerializerSettings);
                 Data = SecureEncoding.GetSecureEncoding(secretKey).Encrypt(rawString, iv);
             }
             catch (Exception e)
@@ -68,7 +68,7 @@ namespace SimpleRemoteMethods.Bases
                 var iv = SecureEncoding.CreateIV(Salt, secretKey);
                 var secureEncoding = SecureEncoding.GetSecureEncoding(secretKey);
                 var decryptedRaw = secureEncoding.Decrypt(Data, iv);
-                return JsonConvert.DeserializeObject<T>(decryptedRaw);
+                return JsonConvert.DeserializeObject<T>(decryptedRaw, SerializerSettings);
             }
             catch (Exception e)
             {

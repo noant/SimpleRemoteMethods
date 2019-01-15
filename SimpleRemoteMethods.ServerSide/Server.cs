@@ -1,6 +1,7 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
@@ -191,7 +192,7 @@ namespace SimpleRemoteMethods.ServerSide
 
             try
             {
-                var clientIp = context.Request.UserHostAddress;
+                var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
                 RaiseLogRecord(LogType.Debug, string.Format("Client {0} connected...", clientIp));
 
@@ -236,7 +237,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleRequest(Request request, HttpListenerContext context)
         {
-            var clientIp = context.Request.UserHostAddress;
+            var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
@@ -254,7 +255,11 @@ namespace SimpleRemoteMethods.ServerSide
             RaiseLogRecord(LogType.Debug, string.Format("{0} with ip {1} connected...", tokenInfo.UserName, clientIp));
 
             // Try to get method info and call
-            var callInfo = _caller.Call(Methods, request.Method, request.Parameters, request.ReturnTypeName);
+            var callInfo = _caller.Call(
+                Methods, 
+                request.Method, 
+                request.Parameters, 
+                request.ReturnTypeName);
 
             // Check if method not exist
             if (callInfo.MethodNotFound)
@@ -271,7 +276,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
         {
-            var clientIp = context.Request.UserHostAddress;
+            var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SimpleRemoteMethods.Bases;
+using System;
 
 namespace SimpleRemoteMethods.Test.Bases
 {
@@ -9,9 +10,13 @@ namespace SimpleRemoteMethods.Test.Bases
 
     public interface ITestContracts
     {
+        [Remote]
         void TestMethod1();
+        [Remote]
         void TestMethod2(ITestParameter param, int i, string g);
+        [Remote]
         ITestParameter TestMethod3(string a, ITestParameter param);
+        [Remote]
         int TestMethod4(int a);
     }
 

@@ -20,7 +20,7 @@ namespace SimpleRemoteMethods.ServerSide
             if (remoteMethods.Any(x => x.IsGenericMethod))
                 throw new MethodNotSupportedException("Target methods cannot be generic");
 
-            if (remoteMethods.Any(x => x.GetParameters().Any(z => !z.IsIn)))
+            if (remoteMethods.Any(x => x.GetParameters().Any(z => z.IsOut)))
                 throw new MethodNotSupportedException("Target methods cannot contains out or ref parameters");
         }
 
@@ -64,7 +64,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             if (type1 == type2)
                 return true;
-            return type1.IsAssignableFrom(type2);
+            return type2.IsAssignableFrom(type1);
         }
 
         private bool IsAllAssignable(Type[] types1, Type[] types2)
@@ -72,7 +72,7 @@ namespace SimpleRemoteMethods.ServerSide
             if (types1.Length != types2.Length)
                 return false;
 
-            for (int i = 0; i <= types1.Length; i++)
+            for (int i = 0; i < types1.Length; i++)
                 if (!IsAssignable(types1[i], types2[i]))
                     return false;
 
