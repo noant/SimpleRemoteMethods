@@ -75,6 +75,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\SimpleRemoteMethods.Bases\SimpleRemoteMethods.Bases.csproj">
+      <Project>{7C9A5143-F952-4539-BE46-A23EDFB807E3}</Project>
+      <Name>SimpleRemoteMethods.Bases</Name>
+    </ProjectReference>
     <ProjectReference Include="..\SimpleRemoteMethods.ClientSide\SimpleRemoteMethods.ClientSide.csproj">
       <Project>{17A037B6-D70A-4E5A-8E6D-4CBBF359E7D7}</Project>
       <Name>SimpleRemoteMethods.ClientSide</Name>

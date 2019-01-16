@@ -41,5 +41,6 @@ namespace SimpleRemoteMethods.Bases
         public const string MethodNotFound = "7";
         public const string InternalServerError = "8";
         public const string ConnectionError = "9";
+        public const string TooMuchData = "10";
     }
 }

@@ -24,6 +24,9 @@ namespace SimpleRemoteMethods.Bases
         /// </summary>
         public string Password { get; set; }
 
+        /// Intruder can change request id even if it encrypted by changing encrypted bytes to random
+        /// in place where RequestId parameter setted; repeat of request id and checking it on server side
+        /// reduces to nothing intruder attemts to change request id.
         /// <summary>
         /// Unique id of request
         /// </summary>

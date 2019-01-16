@@ -19,14 +19,21 @@ namespace SimpleRemoteMethods.Bases
         /// <param name="data">Exception data</param>
         /// <param name="innerException">Details</param>
         public RemoteException(RemoteExceptionData data, Exception innerException = null):
-            base(data.Message, innerException)
+            base(string.Format("Error code: {0}. {1}. {2}", data.Code, data.Message, innerException?.Message),
+                 innerException)
         {
             Data = data;
+            Code = data.Code;
         }
 
         /// <summary>
         /// Exception data
         /// </summary>
-        public new RemoteExceptionData Data { get; private set; }
+        public new RemoteExceptionData Data { get; }
+
+        /// <summary>
+        /// Error code (from RemoteExceptionData codes)
+        /// </summary>
+        public string Code { get; }
     }
 }

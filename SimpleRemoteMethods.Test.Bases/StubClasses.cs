@@ -1,5 +1,6 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
+using System.Threading;
 
 namespace SimpleRemoteMethods.Test.Bases
 {
@@ -18,6 +19,8 @@ namespace SimpleRemoteMethods.Test.Bases
         ITestParameter TestMethod3(string a, ITestParameter param);
         [Remote]
         int TestMethod4(int a);
+        [Remote]
+        ushort TestMethod5(ushort a);
     }
 
     public class TestParameter : ITestParameter
@@ -29,12 +32,15 @@ namespace SimpleRemoteMethods.Test.Bases
     {
         public void TestMethod1()
         {
+            Thread.Sleep(2000);
             Console.WriteLine("...TestMethod1");
         }
 
         public void TestMethod2(ITestParameter param, int i, string g)
         {
             Console.WriteLine("...TestMethod2");
+            if (param == null)
+                throw new NullReferenceException("Param cannot be null");
         }
 
         public ITestParameter TestMethod3(string a, ITestParameter param)
@@ -47,6 +53,12 @@ namespace SimpleRemoteMethods.Test.Bases
         public int TestMethod4(int a)
         {
             Console.WriteLine("...TestMethod4");
+            return a += 10;
+        }
+
+        public ushort TestMethod5(ushort a)
+        {
+            Console.WriteLine("...TestMethod5");
             return a += 10;
         }
     }

@@ -26,15 +26,21 @@ namespace SimpleRemoteMethods.ServerSide
         public string RequestToken(string userName, string clientIp)
         {
             var existingToken = GetTokenInfo(userName, clientIp);
-            if (existingToken != null)
-                _tokens.Remove(existingToken.Token);
+
+            if (existingToken != null && existingToken.DistributionDate < (DateTime.Now - TokenLifetime))
+                lock (_tokens)
+                    _tokens.Remove(existingToken.Token);
+            else if (existingToken != null)
+                return existingToken.Token;
 
             existingToken = new TokenInfo();
             existingToken.ClientIp = clientIp;
             existingToken.UserName = userName;
             existingToken.Token = CreateNewTokenString();
             existingToken.DistributionDate = DateTime.Now;
-            _tokens.Add(existingToken.Token, existingToken);
+            lock (_tokens)
+                _tokens.Add(existingToken.Token, existingToken);
+
             return existingToken.Token;
         }
 
@@ -43,7 +49,10 @@ namespace SimpleRemoteMethods.ServerSide
             lock (_tokens)
                 foreach (var tokenInfo in _tokens.Values)
                     if (tokenInfo.UserName == userName)
+                    {
                         _tokens.Remove(tokenInfo.Token);
+                        break;
+                    }
         }
 
         private string CreateNewTokenString()
@@ -64,7 +73,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void ClearOutdatedTokens()
         {
-            foreach (var tokenInfo in _tokens.Values)
+            foreach (var tokenInfo in _tokens.Values.ToArray())
                 if (tokenInfo.DistributionDate < (DateTime.Now - TokenLifetime))
                     _tokens.Remove(tokenInfo.Token);
         }

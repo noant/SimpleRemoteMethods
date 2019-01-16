@@ -34,3 +34,6 @@
 /SimpleRemoteMethods.Bases/obj/SimpleRemoteMethods.csproj.nuget.g.props
 /SimpleRemoteMethods.Bases/obj/SimpleRemoteMethods.csproj.nuget.g.targets
 /SimpleRemoteMethods.Bases/obj/project.assets.json
+*.dll
+*.pdb
+*.cache

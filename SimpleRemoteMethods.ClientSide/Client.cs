@@ -70,20 +70,10 @@ namespace SimpleRemoteMethods.ClientSide
         /// </summary>
         public DateTime LastCallServerTime { get; private set; }
 
-        private string _myToken;
-
-        private Request PrepareRequest(string methodName, string methodReturnParam, params object[] parameters)
-        {
-            var request = new Request();
-            request.Method = methodName;
-            request.Parameters = parameters;
-            request.RequestId =
-                request.RequestIdRepeat = Guid.NewGuid().ToString();
-            request.ReturnTypeName = methodReturnParam;
-            request.UserToken = _myToken;
-
-            return request;
-        }
+        /// <summary>
+        /// Current authentication user token 
+        /// </summary>
+        public string CurrentUserToken { get; private set; }
 
         /// <summary>
         /// Call remote method
@@ -94,16 +84,17 @@ namespace SimpleRemoteMethods.ClientSide
         /// <returns>Return Task<T></returns>
         public async Task<T> CallMethod<T>(string methodName, params object[] parameters)
         {
-            if (string.IsNullOrEmpty(_myToken))
+            if (string.IsNullOrEmpty(CurrentUserToken))
                 await RefreshToken();
-
-            var request = PrepareRequest(methodName, typeof(T).FullName, parameters);
-            var response = await HttpUtils.SendRequest(CallUri, request, SecretKey);
-            LastCallServerTime = response.ServerTime;
-
-            if (response.Result == null)
-                return default(T);
-            return (T)response.Result;
+            try
+            {
+                return await CallMethodInternal<T>(methodName, parameters);
+            }
+            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            {
+                await RefreshToken();
+                return await CallMethodInternal<T>(methodName, parameters);
+            }
         }
 
         /// <summary>
@@ -111,14 +102,40 @@ namespace SimpleRemoteMethods.ClientSide
         /// </summary>
         /// <param name="methodName">Target method name</param>
         /// <param name="parameters">Input parameters</param>
-        public async void CallMethod(string methodName, params object[] parameters)
+        public async Task CallMethod(string methodName, params object[] parameters)
         {
-            if (string.IsNullOrEmpty(_myToken))
+            if (string.IsNullOrEmpty(CurrentUserToken))
                 await RefreshToken();
+            try
+            {
+                await CallMethodInternal(methodName, parameters);
+            }
+            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            {
+                await RefreshToken();
+                await CallMethodInternal(methodName, parameters);
+            }
+        }
 
-            var request = PrepareRequest(methodName, typeof(void).FullName, parameters);
+        private async Task<Response> SendRequest(string methodName, string returnTypeName, params object[] parameters)
+        {
+            var request = PrepareRequest(methodName, returnTypeName, parameters);
             var response = await HttpUtils.SendRequest(CallUri, request, SecretKey);
             LastCallServerTime = response.ServerTime;
+            return response;
+        }
+
+        private async Task<T> CallMethodInternal<T>(string methodName, params object[] parameters)
+        {
+            var response = await SendRequest(methodName, typeof(T).FullName, parameters);
+            if (response.Result != null)
+                return (T)response.Result;
+            else return default(T);
+        }
+
+        private async Task CallMethodInternal(string methodName, params object[] parameters)
+        {
+            await SendRequest(methodName, typeof(void).FullName, parameters);
         }
 
         private async Task RefreshToken()
@@ -130,7 +147,20 @@ namespace SimpleRemoteMethods.ClientSide
                 request.RequestIdRepeat = Guid.NewGuid().ToString();
 
             var response = await HttpUtils.SendUserTokenRequest(CallUri, request, SecretKey);
-            _myToken = response.UserToken;
+            CurrentUserToken = response.UserToken;
+        }
+
+        private Request PrepareRequest(string methodName, string methodReturnParam, params object[] parameters)
+        {
+            var request = new Request();
+            request.Method = methodName;
+            request.Parameters = parameters;
+            request.RequestId =
+                request.RequestIdRepeat = Guid.NewGuid().ToString();
+            request.ReturnTypeName = methodReturnParam;
+            request.UserToken = CurrentUserToken;
+
+            return request;
         }
     }
 }

@@ -17,11 +17,28 @@ namespace SimpleRemoteMethods.Test.ServerSide
             Console.ReadKey();
         }
 
-        private static void TestServer()
+        private static Server<ITestContracts> CreateServer()
         {
             var server = new Server<ITestContracts>(new TestContracts(), false, 8081, "1234123412341234");
-            server.LogRecord += (o, e) => Console.WriteLine(e.Message ?? e.Exception?.Message ?? "???");
+            server.AuthenticationValidator = new AuthenticationValidatorTest();
+            server.MaxConcurrentCalls = 5;
+            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
+            server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
+            return server;
+        }
+
+        private static void TestServer()
+        {
+            var server = CreateServer();
             server.StartAsync();
+        }
+
+        private class AuthenticationValidatorTest : IAuthenticationValidator
+        {
+            public bool Authenticate(string userName, string password)
+            {
+                return userName == "usr" && password == "123123";
+            }
         }
     }
 }

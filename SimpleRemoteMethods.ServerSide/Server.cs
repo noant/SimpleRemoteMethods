@@ -11,7 +11,7 @@ namespace SimpleRemoteMethods.ServerSide
     /// <summary>
     /// Server side logic
     /// </summary>
-    /// <typeparam name="T">Class or interface that contains methods for remote use</typeparam>
+    /// <typeparam name="T">Class or interface that contains contracts for remote use</typeparam>
     public class Server<T>
     {
         /// <summary>
@@ -34,12 +34,26 @@ namespace SimpleRemoteMethods.ServerSide
             get => _maxConcurrentCalls;
             set
             {
-                if (_maxConcurrentCalls < 1)
+                if (value < 1)
                     throw new InvalidOperationException("MaxConcurrentCalls cannot be less than 1");
                 _maxConcurrentCalls = value;
+                _callsCountToStartServerAfterSuspend = (ushort)((value / 3) * 2);
             }
         }
 
+        /// <summary>
+        /// Max length of request source data in bytes
+        /// </summary>
+        public ulong MaxRequestLength
+        {
+            get => _maxMessageLength;
+            set
+            {
+                if (value < 1)
+                    throw new InvalidOperationException("MaxMessageLength cannot be less than 1");
+                _maxMessageLength = value;
+            }
+        }
         /// <summary>
         /// Object that contains methods for remote use
         /// </summary>
@@ -80,7 +94,8 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// Object for tracking and checking request id
         /// </summary>
-        public RequestIdChecker RequestChecker {
+        public RequestIdChecker RequestChecker
+        {
             get => _requestChecker;
             set => _requestChecker = value ?? throw new ArgumentNullException("RequestChecker cannot be null");
         }
@@ -126,17 +141,21 @@ namespace SimpleRemoteMethods.ServerSide
 
         [ThreadStatic]
         private RequestContext _currentRequestContext;
+
         private HttpListener _listener;
         private bool _started = false;
         private bool _startedInternal = false;
         private ushort _connectionsCount = 0;
         private MethodsCaller<T> _caller = new MethodsCaller<T>();
         private ushort _maxConcurrentCalls = 20;
+        private ushort _callsCountToStartServerAfterSuspend = 12;
+        private ulong _maxMessageLength = 20000;
         private IAuthenticationValidator _authenticationValidator = new AuthenticationValidatorStub();
         private ITokenDistributor _tokenDistributor = new StandardTokenDistributor();
         private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
         private IBruteforceChecker _bruteforceCheckerByIpAddress = new StandardBruteforceChecker();
         private RequestIdChecker _requestChecker = new RequestIdChecker();
+        private object _stopOrStartServerLockerOnHandle = new object();
 
         /// <summary>
         /// Start http server asynchronously
@@ -170,9 +189,17 @@ namespace SimpleRemoteMethods.ServerSide
                 _startedInternal = true;
                 while (_started && _startedInternal)
                 {
-                    var context = _listener.GetContext();
-                    Task.Run(() => HandleContext(context));
+                    try
+                    {
+                        var context = _listener.GetContext();
+                        Task.Run(() => HandleContext(context));
+                    }
+                    catch (Exception e)
+                    {
+                        RaiseLogRecord(LogType.Error, e);
+                    }
                 }
+                RaiseLogRecord(LogType.Info, "Server stopped or suspended...");
             },
             TaskCreationOptions.LongRunning)
             .Start();
@@ -180,11 +207,11 @@ namespace SimpleRemoteMethods.ServerSide
 
         public void Stop()
         {
-            _started = false;
+            _listener.Stop();
             StopInternal();
         }
 
-        private void StopInternal() => _listener.Stop();
+        private void StopInternal() => _startedInternal = false;
 
         private void HandleContext(HttpListenerContext context)
         {
@@ -194,16 +221,14 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
-                RaiseLogRecord(LogType.Debug, string.Format("Client {0} connected...", clientIp));
+                RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] connected...", clientIp));
 
-                // Handle bruteforce suspicion by ip
-                if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
-                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "/", clientIp);
-
-                string sourceStr = null;
-                using (var sr = new StreamReader(context.Request.InputStream))
-                    sourceStr = sr.ReadToEnd();
-
+                // Check is wait list contains current client IP
+                if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
+                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
+                
+                var sourceStr = GetString(context.Request.InputStream);
+                
                 // If encrypted data is Request
                 if (Encrypted<Request>.IsClass(sourceStr))
                 {
@@ -235,6 +260,33 @@ namespace SimpleRemoteMethods.ServerSide
             }
         }
 
+        private string GetString(Stream stream)
+        {
+            const ushort buffLen = 150;
+            var maxLength = (int)MaxRequestLength;
+
+            using (var sr = new StreamReader(stream))
+            {
+                var stringBulder = new StringBuilder();
+
+                var currentCharsCount = 0;
+                var currentIndex = 0;
+
+                var buff = new char[buffLen];
+                while (!sr.EndOfStream)
+                {
+                    currentCharsCount = sr.ReadBlock(buff, 0, buffLen);
+                    currentIndex += currentCharsCount;
+                    stringBulder.Append(buff, 0, currentCharsCount);
+
+                    if (currentIndex > maxLength)
+                        throw RemoteException.Get(RemoteExceptionData.TooMuchData, string.Format("Data length cannot be more than {0} bytes", maxLength));
+                }
+
+                return stringBulder.ToString();
+            }
+        }
+
         private void HandleRequest(Request request, HttpListenerContext context)
         {
             var clientIp = context.Request.RemoteEndPoint.Address.ToString();
@@ -244,7 +296,7 @@ namespace SimpleRemoteMethods.ServerSide
                 !RequestChecker.IsNewRequest(request.RequestId))
                 throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
 
-            RaiseLogRecord(LogType.Debug, string.Format("Ip {0} request id {1} normal...", clientIp, request.RequestId));
+            RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] request id [{1}] normal...", clientIp, request.RequestId));
 
             // Authentication by token
             if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
@@ -252,13 +304,13 @@ namespace SimpleRemoteMethods.ServerSide
             else
                 throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
 
-            RaiseLogRecord(LogType.Debug, string.Format("{0} with ip {1} connected...", tokenInfo.UserName, clientIp));
+            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] connected...", tokenInfo.UserName, clientIp));
 
             // Try to get method info and call
             var callInfo = _caller.Call(
-                Methods, 
-                request.Method, 
-                request.Parameters, 
+                Methods,
+                request.Method,
+                request.Parameters,
                 request.ReturnTypeName);
 
             // Check if method not exist
@@ -271,31 +323,45 @@ namespace SimpleRemoteMethods.ServerSide
 
             SendResponse(callInfo.Result, request.Method, context);
 
-            RaiseLogRecord(LogType.Debug, string.Format("User {0} with ip {1} executed method {2}...", tokenInfo.UserName, clientIp, request.Method));
+            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] executed method [{2}]...", tokenInfo.UserName, clientIp, request.Method));
         }
 
         private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
         {
             var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
+            // Check is wait list contains current client login
+            if (BruteforceCheckerByLogin.IsWaitListContains(clientIp))
+                throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, request.Login, clientIp);
+
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
                 throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
 
-            RaiseLogRecord(LogType.Debug, string.Format("Ip {0} request id {1} normal (user token request)...", clientIp, request.RequestId));
+            RaiseLogRecord(LogType.Debug, string.Format("Ip [{0}] request id [{1}] normal (user token request)...", clientIp, request.RequestId));
 
             // Authentication by login/password
             if (!AuthenticationValidator.Authenticate(request.Login, request.Password))
-                throw RemoteException.Get(RemoteExceptionData.LoginOrPasswordInvalid, clientIp);
+            {
+                // Handle bruteforce suspicion by ip
+                if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
+                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
 
-            RaiseLogRecord(LogType.Debug, string.Format("User {0} ({1}) password authentication success...", request.Login, clientIp));
+                // Handle bruteforce suspicion by login
+                if (BruteforceCheckerByLogin.CheckIsBruteforce(request.Login))
+                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, request.Login, clientIp);
+
+                throw RemoteException.Get(RemoteExceptionData.LoginOrPasswordInvalid, clientIp);
+            }
+
+            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] password authentication success...", request.Login, clientIp));
 
             var newToken = TokenDistributor.RequestToken(request.Login, clientIp);
 
             SendUserTokenResponse(newToken, context);
 
-            RaiseLogRecord(LogType.Info, string.Format("Server issued new token {0} for user {1} with ip {2}...", newToken, request.Login, clientIp));
+            RaiseLogRecord(LogType.Info, string.Format("Server issued new token [{0}] for user [{1}][{2}]...", newToken, request.Login, clientIp));
         }
 
         private void SendResponse(object result, string method, HttpListenerContext context)
@@ -345,21 +411,27 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleConnectionBegin()
         {
-            _connectionsCount++;
-            if (_connectionsCount >= MaxConcurrentCalls)
+            lock (_stopOrStartServerLockerOnHandle)
             {
-                RaiseLogRecord(LogType.Info, string.Format("Too many connections ({0}). Server suspend.", _connectionsCount));
-                StopInternal();
+                _connectionsCount++;
+                if (_connectionsCount >= MaxConcurrentCalls && _startedInternal)
+                {
+                    RaiseLogRecord(LogType.Info, string.Format(" ** Too many connections ({0}). Server suspend.", _connectionsCount));
+                    StopInternal();
+                }
             }
         }
 
         private void HandleConnectionEnd()
         {
-            _connectionsCount--;
-            if (_connectionsCount < MaxConcurrentCalls && !_startedInternal && _started)
+            lock (_stopOrStartServerLockerOnHandle)
             {
-                RaiseLogRecord(LogType.Info, string.Format("Connections count normal. Server continues to work.", _connectionsCount));
-                StartAsyncInternal();
+                _connectionsCount--;
+                if (_connectionsCount <= _callsCountToStartServerAfterSuspend && !_startedInternal && _started)
+                {
+                    RaiseLogRecord(LogType.Info, string.Format(" ** Connections count normal. Server continues to work.", _connectionsCount));
+                    StartAsyncInternal();
+                }
             }
         }
 

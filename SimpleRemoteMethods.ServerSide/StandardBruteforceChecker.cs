@@ -14,35 +14,41 @@ namespace SimpleRemoteMethods.ServerSide
 
         private LoginInfo PrepareLastTryObject(string loginString)
         {
-            if (_loginInfos.ContainsKey(loginString))
-                return _loginInfos[loginString];
-            else
+            lock (_loginInfos)
             {
-                var info = new LoginInfo();
-                _loginInfos.Add(loginString, info);
-                return info;
-            };
+                if (_loginInfos.ContainsKey(loginString))
+                    return _loginInfos[loginString];
+                else
+                {
+                    var info = new LoginInfo();
+                    _loginInfos.Add(loginString, info);
+                    return info;
+                };
+            }
         }
 
         private bool CheckBruteforceInternal(LoginInfo info)
         {
-            var timePassed = DateTime.Now - info.LastLoginTry;
-            if ((!info.IsBrutforceSuspicion && timePassed.TotalMinutes > LoginTryLifetimeMinutes) ||
-                (info.IsBrutforceSuspicion && timePassed.TotalHours > LoginHoursWaitTime))
+            lock (info)
             {
-                info.TryCount = 0;
-                info.IsBrutforceSuspicion = false;
+                var timePassed = DateTime.Now - info.LastLoginTry;
+                if ((!info.IsBrutforceSuspicion && timePassed.TotalMinutes > LoginTryLifetimeMinutes) ||
+                    (info.IsBrutforceSuspicion && timePassed.TotalHours > LoginHoursWaitTime))
+                {
+                    info.TryCount = 0;
+                    info.IsBrutforceSuspicion = false;
+                }
+                else if (!info.IsBrutforceSuspicion && timePassed.TotalMinutes < LoginTryLifetimeMinutes && info.TryCount >= LoginTryCount)
+                {
+                    info.IsBrutforceSuspicion = true;
+                }
+                else if (!info.IsBrutforceSuspicion && timePassed.TotalMinutes < LoginTryLifetimeMinutes && info.TryCount < LoginTryCount)
+                {
+                    info.TryCount++;
+                }
+                info.LastLoginTry = DateTime.Now;
+                return info.IsBrutforceSuspicion;
             }
-            else if (!info.IsBrutforceSuspicion && timePassed.TotalMinutes < LoginTryLifetimeMinutes && info.TryCount >= LoginTryCount)
-            {
-                info.IsBrutforceSuspicion = true;
-            }
-            else if (!info.IsBrutforceSuspicion && timePassed.TotalMinutes < LoginTryLifetimeMinutes && info.TryCount < LoginTryCount)
-            {
-                info.TryCount++;
-            }
-            info.LastLoginTry = DateTime.Now;
-            return info.IsBrutforceSuspicion;
         }
 
         public bool CheckIsBruteforce(string loginString)

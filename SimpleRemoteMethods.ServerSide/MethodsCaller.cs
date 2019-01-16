@@ -26,6 +26,8 @@ namespace SimpleRemoteMethods.ServerSide
 
         public MethodCallResult Call(T methods, string name, object[] parameters, string returnTypeName)
         {
+            parameters = parameters ?? new object[0];
+
             var method = GetMethodInfo(methods, name, parameters.Select(x => x.GetType()).ToArray(), returnTypeName);
             if (method == null)
                 return new MethodCallResult(null, null, true);
@@ -64,6 +66,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             if (type1 == type2)
                 return true;
+            //if (type1 == typeof(long) && type2 == typeof(int))
             return type2.IsAssignableFrom(type1);
         }
 
