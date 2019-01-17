@@ -10,8 +10,13 @@ namespace SimpleRemoteMethods.Bases
     /// </summary>
     public static class ProtobufPrimitivesCreator
     {
+        public static readonly NullSurrogate NullSurrogate = new NullSurrogate();
+
         public static object CreateSurrogate(object obj)
         {
+            if (obj == null)
+                return NullSurrogate;
+
             object outParam = null;
 
             TypeSwitchPack<byte>(obj, ref outParam);
@@ -36,6 +41,9 @@ namespace SimpleRemoteMethods.Bases
 
         public static object ExtractFromSurrogate(object surrogate)
         {
+            if (surrogate is NullSurrogate)
+                return null;
+
             object outParam = null;
 
             TypeSwitchExtract<byte>(surrogate, ref outParam);

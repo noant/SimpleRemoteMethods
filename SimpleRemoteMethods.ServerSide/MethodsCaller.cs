@@ -24,49 +24,57 @@ namespace SimpleRemoteMethods.ServerSide
                 throw new MethodNotSupportedException("Target methods cannot contains out or ref parameters");
         }
 
-        public MethodCallResult Call(T methods, string name, object[] parameters, string returnTypeName)
+        public MethodCallResult Call(T objectMethods, string name, object[] parameters, string returnTypeName)
         {
             parameters = parameters ?? new object[0];
 
-            var method = GetMethodInfo(methods, name, parameters.Select(x => x.GetType()).ToArray(), returnTypeName);
-            if (method == null)
-                return new MethodCallResult(null, null, true);
+            var methods = GetMethodInfo(objectMethods, name, parameters.Select(x => x?.GetType()).ToArray(), returnTypeName);
+
+            if (methods.Length == 0)
+                return new MethodCallResult(null, null, true, false);
+            else if (methods.Length > 1)
+                return new MethodCallResult(null, null, false, true);
+
+            var method = methods.FirstOrDefault();
+
             try
             {
-                var result = method.Invoke(methods, parameters);
-                return new MethodCallResult(result, null, false);
+                var result = method.Invoke(objectMethods, parameters);
+                return new MethodCallResult(result, null, false, false);
             }
             catch(Exception e)
             {
-                return new MethodCallResult(null, e, false);
+                return new MethodCallResult(null, e, false, false);
             }
         }
 
-        private MethodInfo GetMethodInfo(T methods, string name, Type[] parameters, string returnTypeName)
+        private MethodInfo[] GetMethodInfo(T methods, string name, Type[] parameters, string returnTypeName)
         {
             var item = _cache.FirstOrDefault(x => x.IsIt(name, parameters));
             if (item != null)
-                return item.MemberInfo;
+                return new[] { item.MemberInfo };
 
             var allMethods = typeof(T).GetMethods();
             var remoteAttribute = typeof(RemoteAttribute);
             var remoteMethods = allMethods.Where(x => x.CustomAttributes.Any(z => z.AttributeType == remoteAttribute)).ToArray();
-            var targetMethod = remoteMethods.FirstOrDefault(x =>
+            var targetMethods = remoteMethods.Where(x =>
                 x.Name == name &&
                 x.ReturnType.FullName == returnTypeName &&
-                IsAllAssignable(parameters, x.GetParameters().Select(z => z.ParameterType).ToArray()));
+                IsAllAssignable(parameters, x.GetParameters().Select(z => z.ParameterType).ToArray()))
+                .ToArray();
+            
+            if (targetMethods.Length == 1)
+                _cache.Add(new MemberInfoCacheItem(name, parameters, targetMethods.FirstOrDefault()));
 
-            if (targetMethod != null)
-                _cache.Add(new MemberInfoCacheItem(name, parameters, targetMethod));
-
-            return targetMethod;
+            return targetMethods;
         }
 
         private bool IsAssignable(Type type1, Type type2)
         {
             if (type1 == type2)
                 return true;
-            //if (type1 == typeof(long) && type2 == typeof(int))
+            if (type1 == null && !type2.IsValueType)
+                return true;
             return type2.IsAssignableFrom(type1);
         }
 

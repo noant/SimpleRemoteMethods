@@ -24,8 +24,10 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_WrongSecretKey();
             //TestClient_WrongSecretKey2();
             //TestClient_SimpleMethod();
-            TestClient_ExceptionTransfer();
+            //TestClient_ExceptionTransfer();
             //TestClient_Ushort();
+            //TestClient_ConflictDefinitions();
+            //TestClient_AbstractClass();
 
             Console.ReadKey();
         }
@@ -202,6 +204,24 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Console.WriteLine(await CreateClient("123123").TestMethod5(5));
         }
 
+        public async static void TestClient_ConflictDefinitions()
+        {
+            try
+            {
+                await CreateClient("123123").TestMethod6(null, new TestParameter());
+            }
+            catch (RemoteException e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+
+        public async static void TestClient_AbstractClass()
+        {
+            var res = await CreateClient("123123").TestMethod7(new TestParameter2());
+            Console.WriteLine((res as TestParameter2).TestProp);
+        }
+        
         public class ClientTest
         {
             public Client Client { get; set; }
@@ -229,6 +249,21 @@ namespace SimpleRemoteMethods.Test.ClientSide
             public async Task<ushort> TestMethod5(ushort i)
             {
                 return await Client.CallMethod<ushort>(nameof(TestMethod5), i);
+            }
+
+            public async Task<object> TestMethod6(object obj, ITestParameter param)
+            {
+                return await Client.CallMethod<object>(nameof(TestMethod6), obj, param);
+            }
+
+            //public async Task<object> TestMethod6(ITestParameter param1, ITestParameter param2)
+            //{
+            //    return await Client.CallMethod<object>(nameof(TestMethod6), param1, param2);
+            //}
+
+            public async Task<object> TestMethod7(AbstractTestParameter2 param)
+            {
+                return await Client.CallMethod<object>(nameof(TestMethod7), param);
             }
         }
     }

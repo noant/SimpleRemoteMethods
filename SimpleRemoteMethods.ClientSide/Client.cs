@@ -128,8 +128,9 @@ namespace SimpleRemoteMethods.ClientSide
         private async Task<T> CallMethodInternal<T>(string methodName, params object[] parameters)
         {
             var response = await SendRequest(methodName, typeof(T).FullName, parameters);
-            if (response.Result != null)
-                return (T)response.Result;
+            var result = response.Result;
+            if (result != null)
+                return (T)result;
             else return default(T);
         }
 

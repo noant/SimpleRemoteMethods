@@ -43,8 +43,9 @@ namespace SimpleRemoteMethods.Bases
         public const string RequestIdFabrication = "5";
         public const string BruteforceSuspicion = "6";
         public const string MethodNotFound = "7";
-        public const string InternalServerError = "8";
-        public const string ConnectionError = "9";
-        public const string TooMuchData = "10";
+        public const string MoreThanOneMethodFound = "8";
+        public const string InternalServerError = "9";
+        public const string ConnectionError = "10";
+        public const string TooMuchData = "11";
     }
 }

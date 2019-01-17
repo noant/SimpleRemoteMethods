@@ -21,17 +21,17 @@ namespace SimpleRemoteMethods.Bases
         /// Target data
         /// </summary>
         [ProtoIgnore]
-        public object Result { get; set; }
+        public object Result
+        {
+            get => ProtobufPrimitivesCreator.ExtractFromSurrogate(ResultSurrogate);
+            set => ResultSurrogate = ProtobufPrimitivesCreator.CreateSurrogate(value);
+        }
 
         /// <summary>
         /// Protobuf surrogate of Result property
         /// </summary>
         [ProtoMember(2, DynamicType = true)]
-        public object ResultSurrogate
-        {
-            get => ProtobufPrimitivesCreator.CreateSurrogate(Result);
-            set => Result = ProtobufPrimitivesCreator.ExtractFromSurrogate(value);
-        }
+        public object ResultSurrogate { get; set; }
 
         /// <summary>
         /// Server time

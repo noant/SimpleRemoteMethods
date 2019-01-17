@@ -5,6 +5,10 @@ using System.Text;
 
 namespace SimpleRemoteMethods.Bases
 {
+    /// <summary>
+    /// Protobuf wrapper for primitives
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
     [ProtoContract]
     public struct DynamicTypeSurrogate<T>
     {

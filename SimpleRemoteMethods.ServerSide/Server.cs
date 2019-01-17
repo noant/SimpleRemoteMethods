@@ -317,6 +317,10 @@ namespace SimpleRemoteMethods.ServerSide
             if (callInfo.MethodNotFound)
                 throw RemoteException.Get(RemoteExceptionData.MethodNotFound, tokenInfo.UserName, clientIp);
 
+            // Check parameters conflict
+            if (callInfo.MoreThanOneMethodFound)
+                throw RemoteException.Get(RemoteExceptionData.MoreThanOneMethodFound, tokenInfo.UserName, clientIp);
+
             // If target method threw an exception
             if (callInfo.CallException != null)
                 throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
