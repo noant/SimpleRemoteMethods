@@ -27,13 +27,13 @@ namespace SimpleRemoteMethods.Bases
         /// <summary>
         /// Custom message of error
         /// </summary>
-        [ProtoMember(0)]
+        [ProtoMember(1)]
         public string Message { get; set; }
 
         /// <summary>
         /// Error code
         /// </summary>
-        [ProtoMember(1)]
+        [ProtoMember(2)]
         public string Code { get; set; }
 
         public const string DecryptionErrorCode = "0";
