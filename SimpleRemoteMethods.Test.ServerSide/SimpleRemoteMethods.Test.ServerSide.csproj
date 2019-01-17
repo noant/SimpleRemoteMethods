@@ -86,6 +86,10 @@
       <Project>{59B0937C-D5D5-4B0A-9642-67301C42EAC3}</Project>
       <Name>SimpleRemoteMethods.Test.Bases</Name>
     </ProjectReference>
+    <ProjectReference Include="..\SimpleRemoteMethods.Utils.Windows\SimpleRemoteMethods.Utils.Windows.csproj">
+      <Project>{73AD206F-0A72-4F1C-9894-191858A77807}</Project>
+      <Name>SimpleRemoteMethods.Utils.Windows</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

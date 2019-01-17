@@ -12,7 +12,7 @@ namespace SimpleRemoteMethods.ServerSide
     /// Server side logic
     /// </summary>
     /// <typeparam name="T">Class or interface that contains contracts for remote use</typeparam>
-    public class Server<T>
+    public class Server<T> : IDisposable
     {
         /// <summary>
         /// Create server
@@ -169,8 +169,6 @@ namespace SimpleRemoteMethods.ServerSide
             _listener.Prefixes.Add(string.Format("{0}://localhost:{1}/", Ssl ? "https" : "http", Port));
             _listener.Prefixes.Add(string.Format("{0}://127.0.0.1:{1}/", Ssl ? "https" : "http", Port));
             StartAsyncInternal();
-
-            AfterServerStopped?.Invoke(this, this);
         }
 
         private void StartAsyncInternal()
@@ -208,6 +206,7 @@ namespace SimpleRemoteMethods.ServerSide
         public void Stop()
         {
             _listener.Stop();
+            AfterServerStopped?.Invoke(this, this);
             StopInternal();
         }
 
@@ -442,5 +441,14 @@ namespace SimpleRemoteMethods.ServerSide
         private void RaiseLogRecord(LogType type, Exception exception) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, exception));
 
         private void RaiseLogRecord(LogType type, string message) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, message));
+
+        public void Dispose()
+        {
+            if (_started)
+            {
+                Stop();
+                //AfterServerStopped?.Invoke(this, this);
+            }
+        }
     }
 }

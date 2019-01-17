@@ -1,5 +1,7 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
+using System.Net;
+using System.Net.Security;
 using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.ClientSide
@@ -9,6 +11,22 @@ namespace SimpleRemoteMethods.ClientSide
     /// </summary>
     public class Client
     {
+        static Client()
+        {
+            ServicePointManager.ServerCertificateValidationCallback = (sender, cert, chain, errors) => true;
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        }
+
+        /// <summary>
+        /// Handling https server certificate (by default remote there is no validation of remote certificate)
+        /// (reference from System.Net.Security.ServicePointManager.ServerCertificateValidationCallback)
+        /// </summary>
+        public static RemoteCertificateValidationCallback ServerCertificateValidationCallback
+        {
+            get => ServicePointManager.ServerCertificateValidationCallback;
+            set => ServicePointManager.ServerCertificateValidationCallback = value;
+        }
+
         /// <summary>
         /// Constructor
         /// </summary>

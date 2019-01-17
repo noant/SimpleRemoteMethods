@@ -1,5 +1,6 @@
 ﻿using SimpleRemoteMethods.ServerSide;
 using SimpleRemoteMethods.Test.Bases;
+using SimpleRemoteMethods.Utils.Windows;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,7 +14,11 @@ namespace SimpleRemoteMethods.Test.ServerSide
     {
         static void Main(string[] args)
         {
-            TestServer();
+            //TestServer();
+            //TestServer_Stop();
+
+            TestServer_https();
+
             Console.ReadKey();
         }
 
@@ -30,6 +35,29 @@ namespace SimpleRemoteMethods.Test.ServerSide
         private static void TestServer()
         {
             var server = CreateServer();
+            server.StartAsync();
+        }
+
+        private static void TestServer_Stop()
+        {
+            var server = CreateServer();
+            server.AfterServerStopped += (o, e) => Console.WriteLine("Server stopped...");
+            server.StartAsync();
+            Thread.Sleep(30000);
+            server.Stop();
+        }
+
+        public static void TestServer_https()
+        {
+            var server = new Server<ITestContracts>(new TestContracts(), true, 4041, "1234123412341234");
+            server.AuthenticationValidator = new AuthenticationValidatorTest();
+            server.MaxConcurrentCalls = 5;
+            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
+            server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
+
+            var certHash = ServerHelper.GetInstalledCertificates().First().Hash;
+
+            ServerHelper.PrepareHttpsServer(server, certHash);
             server.StartAsync();
         }
 

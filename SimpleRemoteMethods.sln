@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleRemoteMethods.Test.Cl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleRemoteMethods.Test.Encryption", "SimpleRemoteMethods.Test.Encryption\SimpleRemoteMethods.Test.Encryption.csproj", "{D47054C7-BA1E-4618-AE39-1D187DECA9F9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleRemoteMethods.Utils.Windows", "SimpleRemoteMethods.Utils.Windows\SimpleRemoteMethods.Utils.Windows.csproj", "{73AD206F-0A72-4F1C-9894-191858A77807}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{D47054C7-BA1E-4618-AE39-1D187DECA9F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D47054C7-BA1E-4618-AE39-1D187DECA9F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D47054C7-BA1E-4618-AE39-1D187DECA9F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73AD206F-0A72-4F1C-9894-191858A77807}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73AD206F-0A72-4F1C-9894-191858A77807}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73AD206F-0A72-4F1C-9894-191858A77807}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73AD206F-0A72-4F1C-9894-191858A77807}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

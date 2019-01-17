@@ -28,6 +28,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Ushort();
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
+            TestClient_https();
 
             Console.ReadKey();
         }
@@ -221,7 +222,14 @@ namespace SimpleRemoteMethods.Test.ClientSide
             var res = await CreateClient("123123").TestMethod7(new TestParameter2());
             Console.WriteLine((res as TestParameter2).TestProp);
         }
-        
+
+        public async static void TestClient_https()
+        {
+            var client = new Client("192.168.1.200", 4041, true, "1234123412341234", "usr", "123123");
+            var testClient = new ClientTest() { Client = client };
+            Console.WriteLine(await testClient.TestMethod5(5));
+        }
+
         public class ClientTest
         {
             public Client Client { get; set; }
