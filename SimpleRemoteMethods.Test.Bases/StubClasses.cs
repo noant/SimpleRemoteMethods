@@ -1,4 +1,5 @@
-﻿using SimpleRemoteMethods.Bases;
+﻿using ProtoBuf;
+using SimpleRemoteMethods.Bases;
 using System;
 using System.Threading;
 
@@ -23,9 +24,21 @@ namespace SimpleRemoteMethods.Test.Bases
         ushort TestMethod5(ushort a);
     }
 
+    [ProtoContract]
     public class TestParameter : ITestParameter
     {
+        [ProtoMember(1)]
         public int Integer { get; set; } = 12;
+
+        [ProtoMember(2)]
+        public TestInner TestInner { get;set; }
+    }
+
+    [ProtoContract]
+    public class TestInner
+    {
+        [ProtoMember(1)]
+        public string Test { get; set; }
     }
 
     public class TestContracts : ITestContracts

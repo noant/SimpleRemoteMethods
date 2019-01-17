@@ -24,8 +24,8 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_WrongSecretKey();
             //TestClient_WrongSecretKey2();
             //TestClient_SimpleMethod();
-            //TestClient_ExceptionTransfer();
-            TestClient_Ushort();
+            TestClient_ExceptionTransfer();
+            //TestClient_Ushort();
 
             Console.ReadKey();
         }
@@ -199,7 +199,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         
         public async static void TestClient_Ushort()
         {
-            await CreateClient("123123").TestMethod5(5);
+            Console.WriteLine(await CreateClient("123123").TestMethod5(5));
         }
 
         public class ClientTest

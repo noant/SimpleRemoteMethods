@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+﻿using ProtoBuf.Meta;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -15,12 +15,7 @@ namespace SimpleRemoteMethods.Bases
     {
         public const string DividerDataBegin = "<databegin>";
         public const string DividerSaltBegin = "<saltbegin>";
-
-        public static readonly JsonSerializerSettings SerializerSettings = new JsonSerializerSettings
-        {
-            TypeNameHandling = TypeNameHandling.All
-        };
-
+        
         /// <summary>
         /// Random data for encryption
         /// </summary>
@@ -33,7 +28,7 @@ namespace SimpleRemoteMethods.Bases
 
         public Encrypted()
         {
-            //do nothing
+            Statics.Settings();
         }
 
         /// <summary>
@@ -47,8 +42,8 @@ namespace SimpleRemoteMethods.Bases
             {
                 Salt = SecureEncoding.CreateSalt();
                 var iv = SecureEncoding.CreateIV(Salt, secretKey);
-                var rawString = JsonConvert.SerializeObject(obj, SerializerSettings);
-                Data = SecureEncoding.GetSecureEncoding(secretKey).Encrypt(rawString, iv);
+                var raw = Serialize(obj);
+                Data = SecureEncoding.GetSecureEncoding(secretKey).Encrypt(raw, iv);
             }
             catch (Exception e)
             {
@@ -67,8 +62,8 @@ namespace SimpleRemoteMethods.Bases
             {
                 var iv = SecureEncoding.CreateIV(Salt, secretKey);
                 var secureEncoding = SecureEncoding.GetSecureEncoding(secretKey);
-                var decryptedRaw = secureEncoding.Decrypt(Data, iv);
-                return JsonConvert.DeserializeObject<T>(decryptedRaw, SerializerSettings);
+                var decryptedRaw = secureEncoding.DecryptBytes(Data, iv);
+                return Deserialize(decryptedRaw);
             }
             catch (Exception e)
             {
@@ -94,6 +89,29 @@ namespace SimpleRemoteMethods.Bases
             };
         }
 
+        private byte[] Serialize(T obj)
+        {
+            using (var ms = new MemoryStream())
+            {
+                ProtoBuf.Serializer.Serialize(ms, obj);
+                ms.Position = 0;
+                var buff = new byte[ms.Length];
+                ms.Read(buff, 0, (int)ms.Length);
+                return buff;
+            }
+        }
+
+        private T Deserialize(byte[] raw)
+        {
+            using (var ms = new MemoryStream(raw))
+                return ProtoBuf.Serializer.Deserialize<T>(ms);
+        }
+
+        /// <summary>
+        /// Determine whether the encrypted data is the current T-class
+        /// </summary>
+        /// <param name="source"></param>
+        /// <returns></returns>
         public static bool IsClass(string source)
         {
             var t = typeof(T);

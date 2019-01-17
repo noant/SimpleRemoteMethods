@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ProtoBuf;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -7,21 +8,25 @@ namespace SimpleRemoteMethods.Bases
     /// <summary>
     /// Request for server to get user token
     /// </summary>
+    [ProtoContract]
     public class UserTokenRequest
     {
         /// <summary>
         /// Unique id of request
         /// </summary>
+        [ProtoMember(1)]
         public string RequestId { get; set; }
 
         /// <summary>
         /// User login
         /// </summary>
+        [ProtoMember(2)]
         public string Login { get; set; }
 
         /// <summary>
         /// User password
         /// </summary>
+        [ProtoMember(3)]
         public string Password { get; set; }
 
         /// Intruder can change request id even if it encrypted by changing encrypted bytes to random
@@ -30,6 +35,7 @@ namespace SimpleRemoteMethods.Bases
         /// <summary>
         /// Unique id of request
         /// </summary>
+        [ProtoMember(4)]
         public string RequestIdRepeat { get; set; }
     }
 }
