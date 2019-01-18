@@ -8,7 +8,7 @@ namespace SimpleRemoteMethods.ServerSide
     /// <summary>
     /// Information about log item
     /// </summary>
-    public class LogRecordEventArgs
+    public class LogRecordEventArgs: EventArgs
     {
         public LogRecordEventArgs(LogType type, Exception exception)
         {

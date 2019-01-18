@@ -47,5 +47,6 @@ namespace SimpleRemoteMethods.Bases
         public const string InternalServerError = "9";
         public const string ConnectionError = "10";
         public const string TooMuchData = "11";
+        public const string AccessDenied = "12";
     }
 }

@@ -11,7 +11,7 @@ namespace SimpleRemoteMethods.CrossTest
 {
     public partial class MainPage : ContentPage
     {
-        private ClientTest _client = CreateClient();
+        private ClientTest _client = CreateClientSsl();
 
         public MainPage()
         {

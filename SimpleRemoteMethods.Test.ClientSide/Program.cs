@@ -16,6 +16,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             Thread.Sleep(2000);
 
+            //TestClient_Forbidden();
             //TestClient_MaxConcurrentCalls();
             //TestClient_BruteforceChecker();
             //TestClient_TokenExpiredTest();
@@ -28,22 +29,22 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Ushort();
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
-            TestClient_Generic();
-            //TestClient_https();
+            //TestClient_Generic();
+            TestClient_https();
 
             Console.ReadKey();
         }
 
-        private static ClientTest CreateClient(string pass, string secretCode = "1234123412341234")
+        private static ClientTest CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234")
         {
-            var client = new Client("192.168.1.200", 8082, false, secretCode, "usr", pass);
+            var client = new Client("192.168.1.200", 8082, false, secretCode, user, pass);
             var testClient = new ClientTest() { Client = client };
             return testClient;
         }
 
         private async static void TestClient_RequestIdFabricationTest()
         {
-            var client = CreateClient("123123");
+            var client = CreateClient();
 
             await client.TestMethod1(); // Auth crutch
 
@@ -67,7 +68,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         private async static void TestClient_RequestIdFabricationTest2()
         {
-            var client = CreateClient("123123");
+            var client = CreateClient();
 
             await client.TestMethod1(); // Auth crutch
 
@@ -110,7 +111,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var client = CreateClient("123123");
+                var client = CreateClient();
                 await client.TestMethod1();
                 await Task.Delay(1000 * 61);
                 await client.TestMethod1();
@@ -125,7 +126,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var client = CreateClient("123123", "1234123412341235");
+                var client = CreateClient(secretCode: "1234123412341235");
                 await client.TestMethod1();
             }
             catch (Exception e)
@@ -138,7 +139,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var client = CreateClient("123123", "1234123412341235333"); // More than 16 symbols
+                var client = CreateClient(secretCode: "1234123412341235333"); // More than 16 symbols
                 await client.TestMethod1();
             }
             catch (Exception e)
@@ -149,7 +150,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         private async static void TestClient_BruteforceChecker()
         {
-            var client = CreateClient("wrongpass");
+            var client = CreateClient(pass: "wrongpass");
 
             for (int i = 0; i <= 10; i++)
                 try
@@ -164,11 +165,10 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         private static void TestClient_MaxConcurrentCalls()
         {
-            var client = CreateClient("123123");
-
             var param = new TestParameter();
 
             var action = new Action(async () => {
+                var client = CreateClient();
                 for (int i = 0; i <= 40; i++)
                     await client.TestMethod1();
             });
@@ -179,7 +179,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         private async static void TestClient_SimpleMethod()
         {
-            var client = CreateClient("123123");
+            var client = CreateClient();
             var str = "asd";
             var res = await client.TestMethod3(str, new TestParameter());
             Console.WriteLine(res.Integer == str.Length ? "TestClient_SimpleMethod OK" : "TestClient_SimpleMethod Error!");
@@ -187,7 +187,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         private async static void TestClient_ExceptionTransfer()
         {
-            var client = CreateClient("123123");
+            var client = CreateClient();
 
             await client.TestMethod2(new TestParameter(), 1, "123");
 
@@ -203,14 +203,14 @@ namespace SimpleRemoteMethods.Test.ClientSide
         
         public async static void TestClient_Ushort()
         {
-            Console.WriteLine(await CreateClient("123123").TestMethod5(5));
+            Console.WriteLine(await CreateClient().TestMethod5(5));
         }
 
         public async static void TestClient_ConflictDefinitions()
         {
             try
             {
-                await CreateClient("123123").TestMethod6(null, new TestParameter());
+                await CreateClient().TestMethod6(null, new TestParameter());
             }
             catch (RemoteException e)
             {
@@ -228,6 +228,18 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             var res = await CreateClient("123123").TestMethod8(new TestParameter<TestParameter>() { Obj = new TestParameter() { Integer = 25 } });
             Console.WriteLine((res as TestParameter).Integer);
+        }
+        
+        public async static void TestClient_Forbidden()
+        {
+            try
+            {
+                await CreateClient(user: "usr2").TestMethod1();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
 
         public async static void TestClient_https()

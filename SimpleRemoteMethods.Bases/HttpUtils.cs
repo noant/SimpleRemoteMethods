@@ -10,14 +10,14 @@ namespace SimpleRemoteMethods.Bases
 {
     public static class HttpUtils
     {
-        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, string content)
+        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, string content, Action<HttpRequestMessage> requestPrepared = null)
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Get, uri);
-                request.Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(content)));
-                request.Method = HttpMethod.Post;
-                var response = await client.SendAsync(request);
+                var message = new HttpRequestMessage(HttpMethod.Post, uri);
+                message.Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+                requestPrepared?.Invoke(message);
+                var response = await client.SendAsync(message);
                 return response;
             }
             catch (Exception e)
@@ -26,11 +26,13 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public static async Task<Response> SendRequest(HttpClient client, Uri uri, Request request, string secretKey)
+        public static async Task<Response> SendRequest(HttpClient client, Uri uri, Request request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<Request>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString()))
+            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString(), requestPrepared))
             {
+                responseReceived?.Invoke(httpResponse);
+
                 var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
                 if (content == null)
                     throw RemoteException.Get(RemoteExceptionData.UnknownData);
@@ -56,11 +58,13 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public static async Task<UserTokenResponse> SendUserTokenRequest(HttpClient client, Uri uri, UserTokenRequest request, string secretKey)
+        public static async Task<UserTokenResponse> SendUserTokenRequest(HttpClient client, Uri uri, UserTokenRequest request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<UserTokenRequest>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString()))
+            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString(), requestPrepared))
             {
+                responseReceived?.Invoke(httpResponse);
+
                 var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
                 if (content == null)
                     throw RemoteException.Get(RemoteExceptionData.UnknownData);

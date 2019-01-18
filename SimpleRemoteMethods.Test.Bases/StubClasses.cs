@@ -1,5 +1,6 @@
 ﻿using ProtoBuf;
 using SimpleRemoteMethods.Bases;
+using SimpleRemoteMethods.ServerSide;
 using System;
 using System.Threading;
 
@@ -102,6 +103,9 @@ namespace SimpleRemoteMethods.Test.Bases
         public ushort TestMethod5(ushort a)
         {
             Console.WriteLine("...TestMethod5");
+            Console.WriteLine("Test getting request info from method:");
+            Console.WriteLine("...current user: " + Server<ITestContracts>.CurrentRequestContext.UserName);
+            Console.WriteLine("...current user ip: " + Server<ITestContracts>.CurrentRequestContext.ClientIp);
             return a += 10;
         }
 

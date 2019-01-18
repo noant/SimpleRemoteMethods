@@ -14,10 +14,11 @@ namespace SimpleRemoteMethods.Test.ServerSide
     {
         static void Main(string[] args)
         {
-            TestServer();
+            //TestServer();
+
             //TestServer_Stop();
 
-            //TestServer_https();
+            TestServer_https();
 
             Console.ReadKey();
         }
@@ -30,9 +31,17 @@ namespace SimpleRemoteMethods.Test.ServerSide
             server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(10);
             server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
 
+            server.MethodCall += Server_MethodCall;
+
             ServerHelper.PrepareHttpServer(server);
 
             return server;
+        }
+
+        private static void Server_MethodCall(object sender, RequestEventArgs e)
+        {
+            if (e.Request.Method == "TestMethod1" && e.UserName == "usr2")
+                e.ProhibitMethodExecution = true;
         }
 
         private static void TestServer()
@@ -68,7 +77,7 @@ namespace SimpleRemoteMethods.Test.ServerSide
         {
             public bool Authenticate(string userName, string password)
             {
-                return userName == "usr" && password == "123123";
+                return (userName == "usr" || userName == "usr2") && password == "123123";
             }
         }
     }

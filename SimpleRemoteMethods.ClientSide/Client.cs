@@ -121,6 +121,26 @@ namespace SimpleRemoteMethods.ClientSide
         public TimeSpan Timeout => _httpClient.Timeout;
 
         /// <summary>
+        /// Access to low-level request
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<HttpRequestMessage>> UserRequest;
+
+        /// <summary>
+        /// Access to low-level response
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<HttpResponseMessage>> ServerResponse;
+
+        /// <summary>
+        /// Raises when server issued new token for this client
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<UserTokenResponse>> NewUserTokenIssued;
+
+        /// <summary>
+        /// Raises when server throws exception on client with code "2" (UserTokenExpired)
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<string>> UserTokenExpired;
+
+        /// <summary>
         /// Call remote method
         /// </summary>
         /// <typeparam name="T">Return type</typeparam>
@@ -137,6 +157,7 @@ namespace SimpleRemoteMethods.ClientSide
             }
             catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
             {
+                UserTokenExpired?.Invoke(this, new TaggedEventArgs<string>(CurrentUserToken));
                 await RefreshToken();
                 return await CallMethodInternal<T>(methodName, parameters);
             }
@@ -165,7 +186,7 @@ namespace SimpleRemoteMethods.ClientSide
         private async Task<Response> SendRequest(string methodName, string returnTypeName, params object[] parameters)
         {
             var request = PrepareRequest(methodName, returnTypeName, parameters);
-            var response = await HttpUtils.SendRequest(_httpClient, CallUri, request, SecretKey);
+            var response = await HttpUtils.SendRequest(_httpClient, CallUri, request, SecretKey, RaiseUserRequest, RaiseServerResponse);
             LastCallServerTime = response.ServerTime;
             return response;
         }
@@ -193,6 +214,7 @@ namespace SimpleRemoteMethods.ClientSide
                 request.RequestIdRepeat = Guid.NewGuid().ToString();
 
             var response = await HttpUtils.SendUserTokenRequest(_httpClient, CallUri, request, SecretKey);
+            NewUserTokenIssued?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(response));
             CurrentUserToken = response.UserToken;
         }
 
@@ -208,5 +230,11 @@ namespace SimpleRemoteMethods.ClientSide
 
             return request;
         }
+
+        private void RaiseUserRequest(HttpRequestMessage request) =>
+            UserRequest?.Invoke(this, new TaggedEventArgs<HttpRequestMessage>(request));
+
+        private void RaiseServerResponse(HttpResponseMessage response) =>
+            ServerResponse?.Invoke(this, new TaggedEventArgs<HttpResponseMessage>(response));
     }
 }

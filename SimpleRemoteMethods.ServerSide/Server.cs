@@ -14,6 +14,14 @@ namespace SimpleRemoteMethods.ServerSide
     /// <typeparam name="T">Class or interface that contains contracts for remote use</typeparam>
     public class Server<T> : IDisposable
     {
+        [ThreadStatic]
+        private static RequestContext _currentRequestContext;
+
+        /// <summary>
+        /// Current thread request context
+        /// </summary>
+        public static RequestContext CurrentRequestContext => _currentRequestContext;
+        
         /// <summary>
         /// Create server
         /// </summary>
@@ -99,6 +107,7 @@ namespace SimpleRemoteMethods.ServerSide
             get => _requestChecker;
             set => _requestChecker = value ?? throw new ArgumentNullException("RequestChecker cannot be null");
         }
+
         /// <summary>
         /// Use HTTPS
         /// </summary>
@@ -115,6 +124,11 @@ namespace SimpleRemoteMethods.ServerSide
         public string SecretCode { get; }
 
         /// <summary>
+        /// Get is server started now
+        /// </summary>
+        public bool Started { get; private set; } = false;
+
+        /// <summary>
         /// Raises when need to write log
         /// </summary>
         public event EventHandler<LogRecordEventArgs> LogRecord;
@@ -122,28 +136,59 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// Raises before server start
         /// </summary>
-        public event EventHandler<object> BeforeServerStart;
+        public event EventHandler<EventArgs> BeforeServerStart;
 
         /// <summary>
         /// Raises after server started
         /// </summary>
-        public event EventHandler<object> AfterServerStarted;
+        public event EventHandler<EventArgs> AfterServerStarted;
 
         /// <summary>
         /// Raises after server stopped
         /// </summary>
-        public event EventHandler<object> AfterServerStopped;
+        public event EventHandler<EventArgs> AfterServerStopped;
 
         /// <summary>
-        /// Current thread request
+        /// Access to http listener before server starts listen
         /// </summary>
-        public RequestContext CurrentRequestContext => _currentRequestContext;
+        public event EventHandler<TaggedEventArgs<HttpListener>> HttpListenerCustomSetting;
 
-        [ThreadStatic]
-        private RequestContext _currentRequestContext;
+        /// <summary>
+        /// Access to http context on client connect
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<HttpListenerContext>> HttpRequestCustomHandling;
+
+        /// <summary>
+        /// Access to request on client connect
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<Request>> UserRequest;
+
+        /// <summary>
+        /// Access to response on user request
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<Response>> ServerResponse;
+
+        /// <summary>
+        /// Access to user token request
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<UserTokenRequest>> UserTokenRequest;
+        
+        /// <summary>
+        /// Access to user token response
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<UserTokenResponse>> ServerUserTokenResponse;
+
+        /// <summary>
+        /// Access to error response
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<ErrorResponse>> ErrorServerResponse;
+
+        /// <summary>
+        /// Raises before method calls
+        /// </summary>
+        public event EventHandler<RequestEventArgs> MethodCall;
 
         private HttpListener _listener;
-        private bool _started = false;
         private bool _startedInternal = false;
         private ushort _connectionsCount = 0;
         private MethodsCaller<T> _caller = new MethodsCaller<T>();
@@ -162,12 +207,15 @@ namespace SimpleRemoteMethods.ServerSide
         /// </summary>
         public void StartAsync()
         {
-            BeforeServerStart?.Invoke(this, this);
+            BeforeServerStart?.Invoke(this, EventArgs.Empty);
 
             _listener = new HttpListener();
             _listener.Prefixes.Add(string.Format("{0}://+:{1}/", Ssl ? "https" : "http", Port));
             _listener.Prefixes.Add(string.Format("{0}://localhost:{1}/", Ssl ? "https" : "http", Port));
             _listener.Prefixes.Add(string.Format("{0}://127.0.0.1:{1}/", Ssl ? "https" : "http", Port));
+
+            HttpListenerCustomSetting?.Invoke(this, new TaggedEventArgs<HttpListener>(_listener));
+
             StartAsyncInternal();
         }
 
@@ -177,15 +225,15 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 _listener.Start();
 
-                if (!_started)
+                if (!Started)
                 {
-                    AfterServerStarted?.Invoke(this, this);
+                    AfterServerStarted?.Invoke(this, EventArgs.Empty);
                     RaiseLogRecord(LogType.Info, string.Format("Server {0}://localhost:{1} started...", Ssl ? "https" : "http", Port));
                 }
 
-                _started = true;
+                Started = true;
                 _startedInternal = true;
-                while (_started && _startedInternal)
+                while (Started && _startedInternal)
                 {
                     try
                     {
@@ -205,8 +253,9 @@ namespace SimpleRemoteMethods.ServerSide
 
         public void Stop()
         {
+            Started = false;
             _listener.Stop();
-            AfterServerStopped?.Invoke(this, this);
+            AfterServerStopped?.Invoke(this, EventArgs.Empty);
             StopInternal();
         }
 
@@ -218,6 +267,8 @@ namespace SimpleRemoteMethods.ServerSide
 
             try
             {
+                HttpRequestCustomHandling?.Invoke(this, new TaggedEventArgs<HttpListenerContext>(context));
+
                 var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
                 RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] connected...", clientIp));
@@ -227,7 +278,7 @@ namespace SimpleRemoteMethods.ServerSide
                     throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
                 
                 var sourceStr = GetString(context.Request.InputStream);
-                
+
                 // If encrypted data is Request
                 if (Encrypted<Request>.IsClass(sourceStr))
                 {
@@ -288,8 +339,10 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleRequest(Request request, HttpListenerContext context)
         {
-            var clientIp = context.Request.RemoteEndPoint.Address.ToString();
+            UserRequest?.Invoke(this, new TaggedEventArgs<Request>(request));
 
+            var clientIp = context.Request.RemoteEndPoint.Address.ToString();
+            
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
@@ -304,6 +357,14 @@ namespace SimpleRemoteMethods.ServerSide
                 throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
 
             RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] connected...", tokenInfo.UserName, clientIp));
+
+            if (MethodCall != null)
+            {
+                var beforeMethodCallEventArgs = new RequestEventArgs(request, clientIp, tokenInfo.UserName, tokenInfo.Token);
+                MethodCall(this, beforeMethodCallEventArgs);
+                if (beforeMethodCallEventArgs.ProhibitMethodExecution)
+                    throw RemoteException.Get(RemoteExceptionData.AccessDenied, string.Format("Access to method [{0}] denied for user [{1}][{2}]", request.Method, tokenInfo.UserName, clientIp));
+            }
 
             // Try to get method info and call
             var callInfo = _caller.Call(
@@ -331,6 +392,8 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
         {
+            UserTokenRequest?.Invoke(this, new TaggedEventArgs<UserTokenRequest>(request));
+
             var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
             // Check is wait list contains current client login
@@ -390,6 +453,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void SendErrorResponse(ErrorResponse response, HttpListenerContext context)
         {
+            ErrorServerResponse?.Invoke(this, new TaggedEventArgs<ErrorResponse>(response));
             var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
             var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -398,6 +462,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void SendResponse(Response response, HttpListenerContext context)
         {
+            ServerResponse?.Invoke(this, new TaggedEventArgs<Response>(response));
             var encryptedResponse = new Encrypted<Response>(response, SecretCode);
             var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -406,6 +471,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void SendUserTokenResponse(UserTokenResponse tokenResponse, HttpListenerContext context)
         {
+            ServerUserTokenResponse?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(tokenResponse));
             var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
             var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
@@ -430,7 +496,7 @@ namespace SimpleRemoteMethods.ServerSide
             lock (_stopOrStartServerLockerOnHandle)
             {
                 _connectionsCount--;
-                if (_connectionsCount <= _callsCountToStartServerAfterSuspend && !_startedInternal && _started)
+                if (_connectionsCount <= _callsCountToStartServerAfterSuspend && !_startedInternal && Started)
                 {
                     RaiseLogRecord(LogType.Info, string.Format(" ** Connections count normal. Server continues to work.", _connectionsCount));
                     StartAsyncInternal();
@@ -444,11 +510,8 @@ namespace SimpleRemoteMethods.ServerSide
 
         public void Dispose()
         {
-            if (_started)
-            {
+            if (Started)
                 Stop();
-                //AfterServerStopped?.Invoke(this, this);
-            }
         }
     }
 }
