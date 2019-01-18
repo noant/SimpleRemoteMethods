@@ -22,8 +22,9 @@ namespace SimpleRemoteMethods.Test.Encryption
         {
             try
             {
-                tbSalt.Text = SecureEncoding.CreateSalt();
-                var iv = SecureEncoding.CreateIV(tbSalt.Text, tbSecret.Text);
+                var saltBytes = SecureEncoding.CreateSalt();
+                tbSalt.Text = Convert.ToBase64String(saltBytes);
+                var iv = SecureEncoding.CreateIV(saltBytes, tbSecret.Text);
                 var encrypted = 
                     SecureEncoding
                     .GetSecureEncoding(tbSecret.Text)
@@ -50,7 +51,8 @@ namespace SimpleRemoteMethods.Test.Encryption
         {
             try
             {
-                var iv = SecureEncoding.CreateIV(tbSalt.Text, tbSecret.Text);
+                var saltBytes = Convert.FromBase64String(tbSalt.Text);
+                var iv = SecureEncoding.CreateIV(saltBytes, tbSecret.Text);
                 var decrypted =
                     SecureEncoding
                     .GetSecureEncoding(tbSecret.Text)

@@ -12,10 +12,15 @@ namespace SimpleRemoteMethods.Bases
     {
         public static readonly NullSurrogate NullSurrogate = new NullSurrogate();
 
+        private static readonly Type DynamicTypeSurrogate_GenericDefiniction = typeof(DynamicTypeSurrogate<int>).GetGenericTypeDefinition();
+
         public static object CreateSurrogate(object obj)
         {
             if (obj == null)
                 return NullSurrogate;
+
+            if (obj.GetType().IsClass)
+                return obj;
 
             object outParam = null;
 
@@ -43,6 +48,14 @@ namespace SimpleRemoteMethods.Bases
         {
             if (surrogate is NullSurrogate)
                 return null;
+
+            var surrogateType = surrogate.GetType();
+
+            if (!surrogateType.IsGenericType)
+                return surrogate;
+            
+            if (surrogateType.GetGenericTypeDefinition() != DynamicTypeSurrogate_GenericDefiniction)
+                return surrogate;
 
             object outParam = null;
 

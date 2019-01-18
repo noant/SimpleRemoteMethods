@@ -23,6 +23,8 @@ namespace SimpleRemoteMethods.Test.Bases
         object TestMethod6(ITestParameter param1, ITestParameter param2);
         [Remote]
         object TestMethod7(AbstractTestParameter2 param);
+        [Remote]
+        object TestMethod8(TestParameter<TestParameter> param);
     }
 
     public interface ITestParameter
@@ -44,6 +46,13 @@ namespace SimpleRemoteMethods.Test.Bases
     public abstract class AbstractTestParameter2
     {
         public abstract string Tag { get; set; }
+    }
+
+    [ProtoContract]
+    public class TestParameter<T>
+    {
+        [ProtoMember(1)]
+        public T Obj { get; set; }
     }
 
     [ProtoContract]
@@ -111,6 +120,11 @@ namespace SimpleRemoteMethods.Test.Bases
             if (param is TestParameter2 p)
                 p.TestProp = DateTime.Now.ToShortDateString();
             return param;
+        }
+
+        public object TestMethod8(TestParameter<TestParameter> param)
+        {
+            return param.Obj;
         }
     }
 }

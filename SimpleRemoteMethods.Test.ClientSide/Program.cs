@@ -28,14 +28,15 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Ushort();
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
-            TestClient_https();
+            TestClient_Generic();
+            //TestClient_https();
 
             Console.ReadKey();
         }
 
         private static ClientTest CreateClient(string pass, string secretCode = "1234123412341234")
         {
-            var client = new Client("192.168.1.200", 8081, false, secretCode, "usr", pass);
+            var client = new Client("192.168.1.200", 8082, false, secretCode, "usr", pass);
             var testClient = new ClientTest() { Client = client };
             return testClient;
         }
@@ -56,7 +57,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId + "FAKE";
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -80,7 +81,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId;
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -97,7 +98,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId;
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -223,55 +224,23 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Console.WriteLine((res as TestParameter2).TestProp);
         }
 
-        public async static void TestClient_https()
+        public async static void TestClient_Generic()
         {
-            var client = new Client("192.168.1.200", 4041, true, "1234123412341234", "usr", "123123");
-            var testClient = new ClientTest() { Client = client };
-            Console.WriteLine(await testClient.TestMethod5(5));
+            var res = await CreateClient("123123").TestMethod8(new TestParameter<TestParameter>() { Obj = new TestParameter() { Integer = 25 } });
+            Console.WriteLine((res as TestParameter).Integer);
         }
 
-        public class ClientTest
+        public async static void TestClient_https()
         {
-            public Client Client { get; set; }
-                        
-            public async Task TestMethod1()
+            try
             {
-                await Client.CallMethod(nameof(TestMethod1));
+                var client = new Client("192.168.1.200", 4041, true, "1234123412341234", "usr", "123123");
+                var testClient = new ClientTest() { Client = client };
+                Console.WriteLine(await testClient.TestMethod5(5));
             }
-
-            public async Task<ITestParameter> TestMethod3(string a, ITestParameter param)
+            catch (Exception e)
             {
-                return await Client.CallMethod<ITestParameter>(nameof(TestMethod3), a, param);
-            }
-
-            public async Task TestMethod4(int a)
-            {
-                await Client.CallMethod(nameof(TestMethod4), a);
-            }
-
-            public async Task TestMethod2(ITestParameter param, int i, string g)
-            {
-                await Client.CallMethod(nameof(TestMethod2), param, i, g);
-            }
-
-            public async Task<ushort> TestMethod5(ushort i)
-            {
-                return await Client.CallMethod<ushort>(nameof(TestMethod5), i);
-            }
-
-            public async Task<object> TestMethod6(object obj, ITestParameter param)
-            {
-                return await Client.CallMethod<object>(nameof(TestMethod6), obj, param);
-            }
-
-            //public async Task<object> TestMethod6(ITestParameter param1, ITestParameter param2)
-            //{
-            //    return await Client.CallMethod<object>(nameof(TestMethod6), param1, param2);
-            //}
-
-            public async Task<object> TestMethod7(AbstractTestParameter2 param)
-            {
-                return await Client.CallMethod<object>(nameof(TestMethod7), param);
+                Console.WriteLine(e.Message);
             }
         }
     }

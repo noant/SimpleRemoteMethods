@@ -14,21 +14,24 @@ namespace SimpleRemoteMethods.Test.ServerSide
     {
         static void Main(string[] args)
         {
-            //TestServer();
+            TestServer();
             //TestServer_Stop();
 
-            TestServer_https();
+            //TestServer_https();
 
             Console.ReadKey();
         }
 
         private static Server<ITestContracts> CreateServer()
         {
-            var server = new Server<ITestContracts>(new TestContracts(), false, 8081, "1234123412341234");
+            var server = new Server<ITestContracts>(new TestContracts(), false, 8082, "1234123412341234");
             server.AuthenticationValidator = new AuthenticationValidatorTest();
             server.MaxConcurrentCalls = 5;
-            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
+            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(10);
             server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
+
+            ServerHelper.PrepareHttpServer(server);
+
             return server;
         }
 
@@ -52,7 +55,7 @@ namespace SimpleRemoteMethods.Test.ServerSide
             var server = new Server<ITestContracts>(new TestContracts(), true, 4041, "1234123412341234");
             server.AuthenticationValidator = new AuthenticationValidatorTest();
             server.MaxConcurrentCalls = 5;
-            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
+            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(100);
             server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
 
             var certHash = ServerHelper.GetInstalledCertificates().First().Hash;

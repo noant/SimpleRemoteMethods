@@ -21,7 +21,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void PrepareHttpServer<T>(Server<T> server)
         {
             var serverAddress = string.Format("http://localhost:{0}", server.Port);
-            var currentServerName = server.GetType().FullName + "-http";
+            var currentServerName = (typeof(T).Name).Replace("'", string.Empty) + "-http";
 
             server.BeforeServerStart += (o, e) => {
                 SecurityHelper.ReserveUrl(serverAddress);
@@ -43,8 +43,8 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void PrepareHttpsServer<T>(Server<T> server, string certificateHash)
         {
             var serverAddress = string.Format("https://localhost:{0}", server.Port);
-            var currentServerName = server.GetType().FullName + "-https";
-
+            var currentServerName = (typeof(T).Name).Replace("'", string.Empty) + "-https";
+            
             server.BeforeServerStart += (o, e) => {
                 SecurityHelper.BindCertificateToPort(certificateHash, server.Port);
                 SecurityHelper.ReserveUrl(serverAddress);
@@ -77,8 +77,8 @@ namespace SimpleRemoteMethods.Utils.Windows
 
         public class CertificateInfo
         {
-            public string Description { get; set; }
-            public string Hash { get; set; }
+            public string Description { get; internal set; }
+            public string Hash { get; internal set; }
         }
     }
 }

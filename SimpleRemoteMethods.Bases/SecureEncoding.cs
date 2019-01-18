@@ -1,4 +1,5 @@
-﻿using PCLCrypto;
+﻿using Konscious.Security.Cryptography;
+using PCLCrypto;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -34,17 +35,13 @@ namespace SimpleRemoteMethods
         /// <param name="salt">Random data</param>
         /// <param name="secretKey">Secret key</param>
         /// <returns>Initialization vector</returns>
-        public static byte[] CreateIV(string salt, string secretKey)
+        public static byte[] CreateIV(byte[] salt, string secretKey)
         {
-            var saltBytes = Encoding.UTF8.GetBytes(salt);
-
-            var hash = BCrypt.Net.BCrypt.HashPassword(secretKey, salt);
-
-            var secretKeyHashBytes = TextEncoding.GetBytes(hash);
+            var secretKeyHashBytes = CreateHash(TextEncoding.GetBytes(secretKey), salt);
 
             // Calculate offset of secretKeyHashBytes by summ of 
             // first secretKeyByte and first salt byte in proportion to 256
-            var offset = (int)(((secretKeyHashBytes[0] + saltBytes[0]) / 256d) * 16);
+            var offset = (int)(((secretKeyHashBytes[0] + salt[0]) / 256d) * 16);
             if (offset > 16)
                 offset -= 16;
             var targetSecretKeyBytes = new byte[8];
@@ -59,7 +56,7 @@ namespace SimpleRemoteMethods
             var odd = secretKeyHashBytes[0] > 123; //half byte
             for (var i = 0; i < buff.Length; i++)
             {
-                buff[i] = odd ? targetSecretKeyBytes[i / 2] : saltBytes[i / 2];
+                buff[i] = odd ? targetSecretKeyBytes[i / 2] : salt[i / 2];
                 odd = !odd;
             }
 
@@ -67,10 +64,20 @@ namespace SimpleRemoteMethods
         }
 
         /// <summary>
-        /// Create BCrypt salt
+        /// Create salt
         /// </summary>
-        /// <returns>Generate random chars</returns>
-        public static string CreateSalt() => BCrypt.Net.BCrypt.GenerateSalt();
+        /// <returns>Random 32 bytes</returns>
+        public static byte[] CreateSalt() {
+            var salt = new byte[32];
+            Rand.NextBytes(salt);
+            return salt;
+        }
+
+        private static byte[] CreateHash(byte[] salt, byte[] data)
+        {
+            using (var hashCreator = new HMACBlake2B(salt, 512))
+                return hashCreator.ComputeHash(data);
+        }
 
         private string _secretKey;
 

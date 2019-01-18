@@ -40,8 +40,9 @@ namespace SimpleRemoteMethods.Bases
         {
             try
             {
-                Salt = SecureEncoding.CreateSalt();
-                var iv = SecureEncoding.CreateIV(Salt, secretKey);
+                var saltBytes = SecureEncoding.CreateSalt();
+                Salt = Convert.ToBase64String(saltBytes);
+                var iv = SecureEncoding.CreateIV(saltBytes, secretKey);
                 var raw = Serialize(obj);
                 Data = SecureEncoding.GetSecureEncoding(secretKey).Encrypt(raw, iv);
             }
@@ -60,7 +61,8 @@ namespace SimpleRemoteMethods.Bases
         {
             try
             {
-                var iv = SecureEncoding.CreateIV(Salt, secretKey);
+                var saltBytes = Convert.FromBase64String(Salt);
+                var iv = SecureEncoding.CreateIV(saltBytes, secretKey);
                 var secureEncoding = SecureEncoding.GetSecureEncoding(secretKey);
                 var decryptedRaw = secureEncoding.DecryptBytes(Data, iv);
                 return Deserialize(decryptedRaw);

@@ -10,11 +10,10 @@ namespace SimpleRemoteMethods.Bases
 {
     public static class HttpUtils
     {
-        public static async Task<HttpResponseMessage> SendRequest(Uri uri, string content)
+        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, string content)
         {
             try
             {
-                var client = new HttpClient();
                 var request = new HttpRequestMessage(HttpMethod.Get, uri);
                 request.Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(content)));
                 request.Method = HttpMethod.Post;
@@ -27,60 +26,64 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public static async Task<Response> SendRequest(Uri uri, Request request, string secretKey)
+        public static async Task<Response> SendRequest(HttpClient client, Uri uri, Request request, string secretKey)
         {
             var encrypted = new Encrypted<Request>(request, secretKey);
-            var httpResponse = await SendRequest(uri, encrypted.ToString());
-            var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
-            if (content == null)
+            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString()))
+            {
+                var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
+                if (content == null)
+                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
+
+                if (Encrypted<Response>.IsClass(content))
+                {
+                    var encryptedResponse = Encrypted<Response>.FromString(content);
+                    var response = encryptedResponse.Decrypt(secretKey);
+                    if (response == null)
+                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    return response;
+                }
+                else if (Encrypted<ErrorResponse>.IsClass(content))
+                {
+                    var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
+                    var errorResponse = encryptedErrorData.Decrypt(secretKey);
+                    if (errorResponse == null)
+                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    throw RemoteException.Get(errorResponse.ErrorData);
+                }
+
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
-
-            if (Encrypted<Response>.IsClass(content))
-            {
-                var encryptedResponse = Encrypted<Response>.FromString(content);
-                var response = encryptedResponse.Decrypt(secretKey);
-                if (response == null)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                return response;
             }
-            else if (Encrypted<ErrorResponse>.IsClass(content))
-            {
-                var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
-                var errorResponse = encryptedErrorData.Decrypt(secretKey);
-                if (errorResponse == null)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                throw RemoteException.Get(errorResponse.ErrorData);
-            }
-
-            throw RemoteException.Get(RemoteExceptionData.UnknownData);
         }
 
-        public static async Task<UserTokenResponse> SendUserTokenRequest(Uri uri, UserTokenRequest request, string secretKey)
+        public static async Task<UserTokenResponse> SendUserTokenRequest(HttpClient client, Uri uri, UserTokenRequest request, string secretKey)
         {
             var encrypted = new Encrypted<UserTokenRequest>(request, secretKey);
-            var httpResponse = await SendRequest(uri, encrypted.ToString());
-            var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
-            if (content == null)
+            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString()))
+            {
+                var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
+                if (content == null)
+                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
+
+                if (Encrypted<UserTokenResponse>.IsClass(content))
+                {
+                    var encryptedResponse = Encrypted<UserTokenResponse>.FromString(content);
+                    var response = encryptedResponse.Decrypt(secretKey);
+                    if (response == null)
+                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    return response;
+                }
+                else if (Encrypted<ErrorResponse>.IsClass(content))
+                {
+                    var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
+                    var errorResponse = encryptedErrorData.Decrypt(secretKey);
+                    if (errorResponse == null)
+                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    throw RemoteException.Get(errorResponse.ErrorData);
+                }
+
                 throw RemoteException.Get(RemoteExceptionData.UnknownData);
-
-            if (Encrypted<UserTokenResponse>.IsClass(content))
-            {
-                var encryptedResponse = Encrypted<UserTokenResponse>.FromString(content);
-                var response = encryptedResponse.Decrypt(secretKey);
-                if (response == null)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                return response;
             }
-            else if (Encrypted<ErrorResponse>.IsClass(content))
-            {
-                var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
-                var errorResponse = encryptedErrorData.Decrypt(secretKey);
-                if (errorResponse == null)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                throw RemoteException.Get(errorResponse.ErrorData);
-            }
-
-            throw RemoteException.Get(RemoteExceptionData.UnknownData);
         }
     }
 }

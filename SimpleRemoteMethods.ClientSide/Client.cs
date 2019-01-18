@@ -1,6 +1,7 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
 using System.Net;
+using System.Net.Http;
 using System.Net.Security;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace SimpleRemoteMethods.ClientSide
     {
         static Client()
         {
-            ServicePointManager.ServerCertificateValidationCallback = (sender, cert, chain, errors) => true;
+            ServerCertificateValidationCallback = (sender, cert, chain, errors) => true;
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
         }
 
@@ -27,6 +28,33 @@ namespace SimpleRemoteMethods.ClientSide
             set => ServicePointManager.ServerCertificateValidationCallback = value;
         }
 
+        private HttpClient _httpClient;
+
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="host">Host name of server</param>
+        /// <param name="port">Server host</param>
+        /// <param name="ssl">Use HTTPS</param>
+        /// <param name="secretKey">Secret code to encrypt data</param>
+        /// <param name="login">User login name</param>
+        /// <param name="password">User password</param>
+        /// <param name="timeout">Connection timeout</param>
+        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout)
+        {
+            _httpClient = new HttpClient();
+            _httpClient.Timeout = timeout;
+
+            Host = host;
+            Port = port;
+            Ssl = ssl;
+            SecretKey = secretKey;
+            Login = login;
+            Password = password;
+
+            CallUri = new Uri(string.Format(@"{0}://{1}:{2}", ssl ? "https" : "http", host, port));
+        }
+        
         /// <summary>
         /// Constructor
         /// </summary>
@@ -37,15 +65,9 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="login">User login name</param>
         /// <param name="password">User password</param>
         public Client(string host, ushort port, bool ssl, string secretKey, string login, string password)
+            : this(host, port, ssl, secretKey, login, password, TimeSpan.FromSeconds(40))
         {
-            Host = host;
-            Port = port;
-            Ssl = ssl;
-            SecretKey = secretKey;
-            Login = login;
-            Password = password;
-
-            CallUri = new Uri(string.Format(@"{0}://{1}:{2}", ssl ? "https" : "http", host, port));
+            // Do nothing
         }
 
         /// <summary>
@@ -94,6 +116,11 @@ namespace SimpleRemoteMethods.ClientSide
         public string CurrentUserToken { get; private set; }
 
         /// <summary>
+        /// Get connection timeout
+        /// </summary>
+        public TimeSpan Timeout => _httpClient.Timeout;
+
+        /// <summary>
         /// Call remote method
         /// </summary>
         /// <typeparam name="T">Return type</typeparam>
@@ -138,7 +165,7 @@ namespace SimpleRemoteMethods.ClientSide
         private async Task<Response> SendRequest(string methodName, string returnTypeName, params object[] parameters)
         {
             var request = PrepareRequest(methodName, returnTypeName, parameters);
-            var response = await HttpUtils.SendRequest(CallUri, request, SecretKey);
+            var response = await HttpUtils.SendRequest(_httpClient, CallUri, request, SecretKey);
             LastCallServerTime = response.ServerTime;
             return response;
         }
@@ -165,7 +192,7 @@ namespace SimpleRemoteMethods.ClientSide
             request.RequestId =
                 request.RequestIdRepeat = Guid.NewGuid().ToString();
 
-            var response = await HttpUtils.SendUserTokenRequest(CallUri, request, SecretKey);
+            var response = await HttpUtils.SendUserTokenRequest(_httpClient, CallUri, request, SecretKey);
             CurrentUserToken = response.UserToken;
         }
 

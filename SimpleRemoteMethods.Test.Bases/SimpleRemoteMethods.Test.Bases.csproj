@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SimpleRemoteMethods.Bases\SimpleRemoteMethods.Bases.csproj" />
+    <ProjectReference Include="..\SimpleRemoteMethods.ClientSide\SimpleRemoteMethods.ClientSide.csproj" />
   </ItemGroup>
 
 </Project>
