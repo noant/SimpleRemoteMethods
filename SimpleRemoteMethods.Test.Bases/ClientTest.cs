@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.Test.Bases
 {
+    /// <summary>
+    /// NOT generated class
+    /// </summary>
     public class ClientTest
     {
         public Client Client { get; set; }

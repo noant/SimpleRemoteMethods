@@ -32,7 +32,6 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             usings.Add("using System;");
             usings.Add("using System.Threading.Tasks;");
             usings.Add("using SimpleRemoteMethods.ClientSide;");
-            usings.Add("using SimpleRemoteMethods.Bases;");
             codeLines.Add(string.Empty);
             codeLines.Add("namespace " + generatedClassNamespace);
             codeLines.Add("{");
