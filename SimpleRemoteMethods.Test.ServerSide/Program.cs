@@ -14,11 +14,11 @@ namespace SimpleRemoteMethods.Test.ServerSide
     {
         static void Main(string[] args)
         {
-            //TestServer();
+            TestServer();
 
             //TestServer_Stop();
 
-            TestServer_https();
+            //TestServer_https();
 
             Console.ReadKey();
         }

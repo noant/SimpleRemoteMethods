@@ -17,7 +17,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Thread.Sleep(2000);
 
             //TestClient_Forbidden();
-            //TestClient_MaxConcurrentCalls();
+            TestClient_MaxConcurrentCalls();
             //TestClient_BruteforceChecker();
             //TestClient_TokenExpiredTest();
             //TestClient_RequestIdFabricationTest();
@@ -30,16 +30,15 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
             //TestClient_Generic();
-            TestClient_https();
+            //TestClient_https();
 
             Console.ReadKey();
         }
 
-        private static ClientTest CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234")
+        private static TestClientGenerated CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234")
         {
-            var client = new Client("192.168.1.200", 8082, false, secretCode, user, pass);
-            var testClient = new ClientTest() { Client = client };
-            return testClient;
+            var client = new TestClientGenerated("192.168.1.200", 8082, false, secretCode, user, pass);
+            return client;
         }
 
         private async static void TestClient_RequestIdFabricationTest()

@@ -40,10 +40,12 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="login">User login name</param>
         /// <param name="password">User password</param>
         /// <param name="timeout">Connection timeout</param>
-        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout)
+        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout = default(TimeSpan))
         {
             _httpClient = new HttpClient();
-            _httpClient.Timeout = timeout;
+
+            if (timeout != default(TimeSpan))
+                _httpClient.Timeout = timeout;
 
             Host = host;
             Port = port;
@@ -55,21 +57,6 @@ namespace SimpleRemoteMethods.ClientSide
             CallUri = new Uri(string.Format(@"{0}://{1}:{2}", ssl ? "https" : "http", host, port));
         }
         
-        /// <summary>
-        /// Constructor
-        /// </summary>
-        /// <param name="host">Host name of server</param>
-        /// <param name="port">Server host</param>
-        /// <param name="ssl">Use HTTPS</param>
-        /// <param name="secretKey">Secret code to encrypt data</param>
-        /// <param name="login">User login name</param>
-        /// <param name="password">User password</param>
-        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password)
-            : this(host, port, ssl, secretKey, login, password, TimeSpan.FromSeconds(40))
-        {
-            // Do nothing
-        }
-
         /// <summary>
         /// Uri of server
         /// </summary>
