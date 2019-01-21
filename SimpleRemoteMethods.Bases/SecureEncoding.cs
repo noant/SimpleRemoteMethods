@@ -1,10 +1,10 @@
 ﻿using Konscious.Security.Cryptography;
-using PCLCrypto;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
-using static PCLCrypto.WinRTCrypto;
 
 namespace SimpleRemoteMethods
 {
@@ -98,10 +98,7 @@ namespace SimpleRemoteMethods
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
         /// <returns>Encrypted data</returns>
-        public string Encrypt(string data, byte[] iv)
-        {
-            return Encrypt(TextEncoding.GetBytes(data), iv);
-        }
+        public string Encrypt(string data, byte[] iv) => Encrypt(TextEncoding.GetBytes(data), iv);
 
         /// <summary>
         /// Encrypt data with initialization vector
@@ -109,16 +106,24 @@ namespace SimpleRemoteMethods
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
         /// <returns>Encrypted data in bytes</returns>
-        public string Encrypt(byte[] data, byte[] iv)
-        {
-            return EncryptInternal(data, iv);
-        }
+        public string Encrypt(byte[] data, byte[] iv) => EncryptInternal(data, iv);
 
         private string EncryptInternal(byte[] data, byte[] iv)
         {
-            var algo = SymmetricKeyAlgorithmProvider.OpenAlgorithm(SymmetricAlgorithm.AesCbcPkcs7);
-            var key = algo.CreateSymmetricKey(TextEncoding.GetBytes(_secretKey));
-            return Convert.ToBase64String(CryptographicEngine.Encrypt(key, data, iv));
+            using (var aes = Aes.Create())
+            {
+                aes.Key = TextEncoding.GetBytes(_secretKey);
+                aes.IV = iv;
+
+                var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+
+                using (var ms = new MemoryStream())
+                {
+                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                        cs.Write(data, 0, data.Length);
+                    return Convert.ToBase64String(ms.ToArray());
+                }
+            }
         }
 
         /// <summary>
@@ -135,9 +140,21 @@ namespace SimpleRemoteMethods
 
         private byte[] DecryptBytesInternal(string data, byte[] iv)
         {
-            var algo = SymmetricKeyAlgorithmProvider.OpenAlgorithm(SymmetricAlgorithm.AesCbcPkcs7);
-            var key = algo.CreateSymmetricKey(TextEncoding.GetBytes(_secretKey));
-            return CryptographicEngine.Decrypt(key, Convert.FromBase64String(data), iv);
+            using (var aes = Aes.Create())
+            {
+                aes.Key = TextEncoding.GetBytes(_secretKey);
+                aes.IV = iv;
+
+                var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
+
+                using (var ms = new MemoryStream(Convert.FromBase64String(data)))
+                using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
+                using (var msReader = new MemoryStream())
+                {
+                    cs.CopyTo(msReader);
+                    return msReader.ToArray();
+                }
+            }
         }
 
         /// <summary>
@@ -146,9 +163,6 @@ namespace SimpleRemoteMethods
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
         /// <returns>Decrypted data in bytes</returns>
-        public byte[] DecryptBytes(string data, byte[] iv)
-        {
-            return DecryptBytesInternal(data, iv);
-        }
+        public byte[] DecryptBytes(string data, byte[] iv) => DecryptBytesInternal(data, iv);
     }
 }

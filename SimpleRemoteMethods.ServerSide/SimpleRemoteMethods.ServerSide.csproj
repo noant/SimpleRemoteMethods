@@ -6,7 +6,6 @@
 
   <ItemGroup>
     <PackageReference Include="Konscious.Security.Cryptography.Blake2" Version="1.0.9" />
-    <PackageReference Include="PCLCrypto" Version="2.0.147" />
     <PackageReference Include="protobuf-net" Version="2.4.0" />
   </ItemGroup>
 
