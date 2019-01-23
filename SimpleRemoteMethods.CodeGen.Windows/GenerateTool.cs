@@ -18,7 +18,7 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             var codeLines = new List<string>();
             var usings = new List<string>();
 
-            var assembly = Assembly.LoadFile(path);
+            var assembly = Assembly.LoadFrom(path);
             var type = assembly.GetTypes().FirstOrDefault(x => x.IsInterface && x.Namespace + "." + x.Name == interfaceFullName);
 
             if (type == null)
