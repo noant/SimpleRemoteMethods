@@ -128,6 +128,21 @@ namespace SimpleRemoteMethods.ClientSide
         public event EventHandler<TaggedEventArgs<string>> UserTokenExpired;
 
         /// <summary>
+        /// Raises when exception was thrown and RemoteExceptionCode is not InternalServerError and not UserTokenExpired (IsConnectionNormal == false)
+        /// </summary>
+        public event EventHandler<TaggedEventArgs<RemoteException>> ConnectionError;
+
+        /// <summary>
+        /// Raises when IsConnectionNormal was setted to True 
+        /// </summary>
+        public event EventHandler<Client> ConnectionNormal;
+
+        /// <summary>
+        /// True if last remote method call was successful
+        /// </summary>
+        public bool IsConnectionNormal { get; private set; }
+
+        /// <summary>
         /// Call remote method
         /// </summary>
         /// <typeparam name="T">Return type</typeparam>
@@ -136,6 +151,7 @@ namespace SimpleRemoteMethods.ClientSide
         /// <returns>Return Task<T></returns>
         public async Task<T> CallMethod<T>(string methodName, params object[] parameters)
         {
+            bool exceptionThrown = false;
             if (string.IsNullOrEmpty(CurrentUserToken))
                 await RefreshToken();
             try
@@ -148,6 +164,17 @@ namespace SimpleRemoteMethods.ClientSide
                 await RefreshToken();
                 return await CallMethodInternal<T>(methodName, parameters);
             }
+            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            {
+                exceptionThrown = true;
+                RaiseConnectionError(e);
+                throw e;
+            }
+            finally
+            {
+                if (!exceptionThrown)
+                    RaiseConnectionNormal();
+            }
         }
 
         /// <summary>
@@ -157,16 +184,28 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="parameters">Input parameters</param>
         public async Task CallMethod(string methodName, params object[] parameters)
         {
+            bool exceptionThrown = false;
             if (string.IsNullOrEmpty(CurrentUserToken))
                 await RefreshToken();
             try
             {
                 await CallMethodInternal(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            catch (RemoteException e) when (e.Code == RemoteExceptionData.UserTokenExpired)
             {
                 await RefreshToken();
                 await CallMethodInternal(methodName, parameters);
+            }
+            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            {
+                exceptionThrown = true;
+                RaiseConnectionError(e);
+                throw e;
+            }
+            finally
+            {
+                if (!exceptionThrown)
+                    RaiseConnectionNormal();
             }
         }
 
@@ -194,15 +233,30 @@ namespace SimpleRemoteMethods.ClientSide
 
         private async Task RefreshToken()
         {
-            var request = new UserTokenRequest();
-            request.Login = Login;
-            request.Password = Password;
-            request.RequestId =
-                request.RequestIdRepeat = Guid.NewGuid().ToString();
+            var exceptionThrown = false;
+            try
+            {
+                var request = new UserTokenRequest();
+                request.Login = Login;
+                request.Password = Password;
+                request.RequestId =
+                    request.RequestIdRepeat = Guid.NewGuid().ToString();
 
-            var response = await HttpUtils.SendUserTokenRequest(_httpClient, CallUri, request, SecretKey);
-            NewUserTokenIssued?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(response));
-            CurrentUserToken = response.UserToken;
+                var response = await HttpUtils.SendUserTokenRequest(_httpClient, CallUri, request, SecretKey);
+                NewUserTokenIssued?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(response));
+                CurrentUserToken = response.UserToken;
+            }
+            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            {
+                exceptionThrown = true;
+                RaiseConnectionError(e);
+                throw e;
+            }
+            finally
+            {
+                if (!exceptionThrown)
+                    RaiseConnectionNormal();
+            }
         }
 
         private Request PrepareRequest(string methodName, string methodReturnParam, params object[] parameters)
@@ -223,5 +277,20 @@ namespace SimpleRemoteMethods.ClientSide
 
         private void RaiseServerResponse(HttpResponseMessage response) =>
             ServerResponse?.Invoke(this, new TaggedEventArgs<HttpResponseMessage>(response));
+
+        private void RaiseConnectionError(RemoteException exception)
+        {
+            IsConnectionNormal = false;
+            ConnectionError?.Invoke(this, new TaggedEventArgs<RemoteException>(exception));
+        }
+
+        private void RaiseConnectionNormal()
+        {
+            if (!IsConnectionNormal)
+            {
+                IsConnectionNormal = true;
+                ConnectionNormal?.Invoke(this, this);
+            }
+        }
     }
 }
