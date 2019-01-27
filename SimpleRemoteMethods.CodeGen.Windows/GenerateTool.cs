@@ -49,7 +49,7 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                 var returnType = method.ReturnType;
                 var typeConstruction = new List<Type>();
                 var returnTypeName = returnType.GetFriendlyName(typeConstruction);
-                AppendUsings(typeConstruction, usings);
+                AppendUsings(typeConstruction, usings, generatedClassNamespace);
                 codeLines.Add(string.Empty);
                 var attrs = "        public async Task";
                 if (returnType != typeof(void))
@@ -73,7 +73,7 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                         var paramTypeConstruction = new List<Type>();
                         var paramTypeName = paramType.GetFriendlyName(paramTypeConstruction);
 
-                        AppendUsings(paramTypeConstruction, usings);
+                        AppendUsings(paramTypeConstruction, usings, generatedClassNamespace);
 
                         paramsStr += ", " + paramTypeName + " " + paramName;
                     }
@@ -85,8 +85,19 @@ namespace SimpleRemoteMethods.CodeGen.Windows
 
                 var paramsUsage = "";
 
-                var call = returnType != typeof(void) ? "return await" : "await";
-                call += " Client.CallMethod" + (returnType != typeof(void) ? "<" + returnTypeName + ">" : string.Empty);
+                string call = "";
+                if (returnType == typeof(void))
+                    call = "await Client.CallMethod";
+                else if (returnType.IsArray)
+                {
+                    var innerType = returnType.GetElementType();
+                    AppendUsings(new List<Type> { innerType }, usings, generatedClassNamespace);
+                    call = $"return await Client.CallMethodArray<{innerType.Name}>";
+                }
+                else
+                {
+                    call = $"return await Client.CallMethod<{returnTypeName}>";
+                }
 
                 if (parameters.Length != 0)
                 {
@@ -118,12 +129,12 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             return sb.ToString();
         }
 
-        private static void AppendUsings(List<Type> types, List<string> allUsings)
+        private static void AppendUsings(List<Type> types, List<string> allUsings, string mainNamespace)
         {
             foreach (var type in types)
             {
                 var @using = "using " + type.Namespace + ";";
-                if (!allUsings.Contains(@using))
+                if (!allUsings.Contains(@using) && type.Namespace != mainNamespace)
                     allUsings.Add(@using);
             }
         }

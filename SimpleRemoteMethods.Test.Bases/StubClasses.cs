@@ -2,6 +2,7 @@
 using SimpleRemoteMethods.Bases;
 using SimpleRemoteMethods.ServerSide;
 using System;
+using System.Collections.Generic;
 using System.Threading;
 
 namespace SimpleRemoteMethods.Test.Bases
@@ -26,6 +27,8 @@ namespace SimpleRemoteMethods.Test.Bases
         object TestMethod7(AbstractTestParameter2 param);
         [Remote]
         object TestMethod8(TestParameter<TestParameter> param);
+        [Remote]
+        TestParameter[] TestMethod9(string s);
     }
 
     public interface ITestParameter
@@ -41,6 +44,9 @@ namespace SimpleRemoteMethods.Test.Bases
 
         [ProtoMember(2)]
         public TestInner TestInner { get;set; }
+
+        [ProtoMember(3, OverwriteList = true)]
+        public string[] Strs { get; set; } = new[] { "a", "b", "c", DateTime.Now.ToString() };
     }
 
     [ProtoContract]
@@ -129,6 +135,15 @@ namespace SimpleRemoteMethods.Test.Bases
         public object TestMethod8(TestParameter<TestParameter> param)
         {
             return param.Obj;
+        }
+
+        public TestParameter[] TestMethod9(string s)
+        {
+            var list = new List<TestParameter>();
+            list.Add(new TestParameter() { Integer = s.Length });
+            list.Add(new TestParameter() { Integer = s.Length });
+            Thread.Sleep(2000);
+            return list.ToArray();
         }
     }
 }

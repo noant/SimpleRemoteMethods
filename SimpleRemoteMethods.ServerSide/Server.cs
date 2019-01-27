@@ -200,7 +200,7 @@ namespace SimpleRemoteMethods.ServerSide
         private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
         private IBruteforceChecker _bruteforceCheckerByIpAddress = new StandardBruteforceChecker();
         private RequestIdChecker _requestChecker = new RequestIdChecker();
-        private object _stopOrStartServerLockerOnHandle = new object();
+        private readonly object _stopOrStartServerLockerOnHandle = new object();
 
         /// <summary>
         /// Start http server asynchronously
@@ -385,7 +385,10 @@ namespace SimpleRemoteMethods.ServerSide
             if (callInfo.CallException != null)
                 throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
 
-            SendResponse(callInfo.Result, request.Method, context);
+            if (callInfo.ResultArray != null)
+                SendResponse(callInfo.ResultArray, request.Method, context);
+            else
+                SendResponse(callInfo.Result, request.Method, context);
 
             RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] executed method [{2}]...", tokenInfo.UserName, clientIp, request.Method));
         }
@@ -434,6 +437,13 @@ namespace SimpleRemoteMethods.ServerSide
         {
             SendResponse(
                 new Response() { Result = result, Method = method, ServerTime = DateTime.Now },
+                context);
+        }
+
+        private void SendResponse(Array resultArr, string method, HttpListenerContext context)
+        {
+            SendResponse(
+                new Response() { ResultArray = (object[])resultArr, Method = method, ServerTime = DateTime.Now },
                 context);
         }
 

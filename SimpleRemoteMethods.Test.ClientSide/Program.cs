@@ -17,7 +17,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Thread.Sleep(2000);
 
             //TestClient_Forbidden();
-            TestClient_MaxConcurrentCalls();
+            //TestClient_MaxConcurrentCalls();
             //TestClient_BruteforceChecker();
             //TestClient_TokenExpiredTest();
             //TestClient_RequestIdFabricationTest();
@@ -30,6 +30,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
             //TestClient_Generic();
+            TestClient_Array();
             //TestClient_https();
 
             Console.ReadKey();
@@ -234,6 +235,22 @@ namespace SimpleRemoteMethods.Test.ClientSide
             try
             {
                 await CreateClient(user: "usr2").TestMethod1();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
+        }
+
+        public async static void TestClient_Array()
+        {
+            try
+            {
+                var res = await CreateClient(user: "usr2").TestMethod9("123");
+                Console.WriteLine("Current sec is " + DateTime.Now.Second);
+                foreach (var r in res)
+                    foreach (var s in r.Strs)
+                        Console.WriteLine(s);
             }
             catch (Exception e)
             {

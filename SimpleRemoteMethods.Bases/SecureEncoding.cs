@@ -17,7 +17,7 @@ namespace SimpleRemoteMethods
 
         private static readonly Random Rand = new Random();
         private static Dictionary<string, SecureEncoding> Cached = new Dictionary<string, SecureEncoding>();
-        private static object Locker_GetSecureEncoding = new object();
+        private static readonly object Locker_GetSecureEncoding = new object();
 
         public static SecureEncoding GetSecureEncoding(string key)
         {
@@ -79,7 +79,7 @@ namespace SimpleRemoteMethods
                 return hashCreator.ComputeHash(data);
         }
 
-        private string _secretKey;
+        private readonly string _secretKey;
 
         /// <summary>
         /// Create SecureEncoding object

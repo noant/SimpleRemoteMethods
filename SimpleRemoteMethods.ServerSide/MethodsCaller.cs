@@ -1,9 +1,9 @@
-﻿using SimpleRemoteMethods.Bases;
+﻿using ProtoBuf;
+using SimpleRemoteMethods.Bases;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 
 namespace SimpleRemoteMethods.ServerSide
 {
@@ -40,6 +40,10 @@ namespace SimpleRemoteMethods.ServerSide
             try
             {
                 var result = method.Invoke(objectMethods, parameters);
+                if (method.ReturnType.GetCustomAttribute<ProtoContractAttribute>() == null &&
+                    method.ReturnType.IsArray &&
+                    method.ReturnType != typeof(string))
+                    return new MethodCallResult((Array)result, null, false, false);
                 return new MethodCallResult(result, null, false, false);
             }
             catch(Exception e)

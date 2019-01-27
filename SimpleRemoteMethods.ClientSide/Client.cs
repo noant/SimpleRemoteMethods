@@ -1,5 +1,6 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
@@ -47,10 +48,10 @@ namespace SimpleRemoteMethods.ClientSide
             if (timeout != default(TimeSpan))
                 _httpClient.Timeout = timeout;
 
-            Host = host;
+            Host = host ?? throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "Host cannot be null");
             Port = port;
             Ssl = ssl;
-            SecretKey = secretKey;
+            SecretKey = secretKey ?? throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "SecretCode cannot be null");
             Login = login;
             Password = password;
 
@@ -180,6 +181,41 @@ namespace SimpleRemoteMethods.ClientSide
         /// <summary>
         /// Call remote method
         /// </summary>
+        /// <typeparam name="T">Return type</typeparam>
+        /// <param name="methodName">Target method name</param>
+        /// <param name="parameters">Input parameters</param>
+        /// <returns>Return Task<T></returns>
+        public async Task<T[]> CallMethodArray<T>(string methodName, params object[] parameters)
+        {
+            bool exceptionThrown = false;
+            if (string.IsNullOrEmpty(CurrentUserToken))
+                await RefreshToken();
+            try
+            {
+                return await CallMethodArrayInternal<T>(methodName, parameters);
+            }
+            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            {
+                UserTokenExpired?.Invoke(this, new TaggedEventArgs<string>(CurrentUserToken));
+                await RefreshToken();
+                return await CallMethodArrayInternal<T>(methodName, parameters);
+            }
+            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            {
+                exceptionThrown = true;
+                RaiseConnectionError(e);
+                throw e;
+            }
+            finally
+            {
+                if (!exceptionThrown)
+                    RaiseConnectionNormal();
+            }
+        }
+
+        /// <summary>
+        /// Call remote method
+        /// </summary>
         /// <param name="methodName">Target method name</param>
         /// <param name="parameters">Input parameters</param>
         public async Task CallMethod(string methodName, params object[] parameters)
@@ -220,10 +256,19 @@ namespace SimpleRemoteMethods.ClientSide
         private async Task<T> CallMethodInternal<T>(string methodName, params object[] parameters)
         {
             var response = await SendRequest(methodName, typeof(T).FullName, parameters);
-            var result = response.Result;
+            var result = response.Result ?? response.ResultArray;
             if (result != null)
                 return (T)result;
             else return default(T);
+        }
+
+        private async Task<T[]> CallMethodArrayInternal<T>(string methodName, params object[] parameters)
+        {
+            var response = await SendRequest(methodName, typeof(T[]).FullName, parameters);
+            var result = response.ResultArray;
+            if (result != null)
+                return result.Cast<T>().ToArray();
+            else return default(T[]);
         }
 
         private async Task CallMethodInternal(string methodName, params object[] parameters)
