@@ -31,6 +31,7 @@ namespace SimpleRemoteMethods.Test.Bases
         TestParameter[] TestMethod9(string s);
     }
 
+    [ProtoContract]
     public interface ITestParameter
     {
         int Integer { get; set; }
@@ -39,14 +40,37 @@ namespace SimpleRemoteMethods.Test.Bases
     [ProtoContract]
     public class TestParameter : ITestParameter
     {
+        public TestParameter()
+        {
+            Dyn = new TestParameter2()
+            {
+                Tag = DateTime.Now.ToString()
+            };
+
+            //Dyn = DateTime.Now.Second;
+        }
+
         [ProtoMember(1)]
         public int Integer { get; set; } = 12;
 
         [ProtoMember(2)]
         public TestInner TestInner { get;set; }
 
-        [ProtoMember(3, OverwriteList = true)]
+        [ProtoMember(4, OverwriteList = true)]
         public string[] Strs { get; set; } = new[] { "a", "b", "c", DateTime.Now.ToString() };
+
+        [ProtoIgnore]
+        public object Dyn { get; set; }
+
+        [ProtoMember(3)]
+        public DynamicSurrogate DynProto
+        {
+            get => DynamicSurrogate.Create(Dyn);
+            set => Dyn = DynamicSurrogate.Extract(value);
+        }
+
+        //[ProtoMember(4)]
+        //public string Dyn { get; set; } = DateTime.Now.ToString();
     }
 
     [ProtoContract]
@@ -65,10 +89,27 @@ namespace SimpleRemoteMethods.Test.Bases
     [ProtoContract]
     public class TestParameter2 : AbstractTestParameter2
     {
+        [ProtoMember(1)]
         public override string Tag { get; set; } = "TestValue";
 
-        [ProtoMember(1)]
+        [ProtoMember(2)]
         public string TestProp { get; set; } = "TestValue2";
+
+        [ProtoIgnore]
+        public object TestString { get; set; } = DateTime.Now.ToString() + " success!";
+        //public object TestString { get; set; } = DateTime.Now.Second;
+
+        [ProtoMember(3)]
+        public DynamicSurrogate TestStringSurr
+        {
+            get => DynamicSurrogate.Create(TestString);
+            set => TestString = DynamicSurrogate.Extract(value);
+        }
+
+        public override string ToString()
+        {
+            return Tag + " / " + TestString + "/" + base.ToString();
+        }
     }
 
     [ProtoContract]

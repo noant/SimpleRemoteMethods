@@ -22,7 +22,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.ConnectionError, string.Empty, e);
+                throw RemoteException.Get(RemoteExceptionData.ConnectionError, "/", e);
             }
         }
 

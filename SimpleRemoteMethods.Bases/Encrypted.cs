@@ -48,7 +48,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, e.Message, e);
+                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "/", e);
             }
         }
 
@@ -69,7 +69,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, e.Message, e);
+                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "/", e);
             }
         }
 

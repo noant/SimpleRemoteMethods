@@ -30,7 +30,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_ConflictDefinitions();
             //TestClient_AbstractClass();
             //TestClient_Generic();
-            TestClient_Array();
+            //TestClient_Array();
             //TestClient_https();
 
             Console.ReadKey();
@@ -189,7 +189,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             var client = CreateClient();
 
-            await client.TestMethod2(new TestParameter(), 1, "123");
+            await client.TestMethod2(new TestParameter(), 1, "132");
 
             try
             {
@@ -220,13 +220,13 @@ namespace SimpleRemoteMethods.Test.ClientSide
 
         public async static void TestClient_AbstractClass()
         {
-            var res = await CreateClient("123123").TestMethod7(new TestParameter2());
+            var res = await CreateClient().TestMethod7(new TestParameter2());
             Console.WriteLine((res as TestParameter2).TestProp);
         }
 
         public async static void TestClient_Generic()
         {
-            var res = await CreateClient("123123").TestMethod8(new TestParameter<TestParameter>() { Obj = new TestParameter() { Integer = 25 } });
+            var res = await CreateClient().TestMethod8(new TestParameter<TestParameter>() { Obj = new TestParameter() { Integer = 25 } });
             Console.WriteLine((res as TestParameter).Integer);
         }
         
@@ -246,11 +246,15 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var res = await CreateClient(user: "usr2").TestMethod9("123");
-                Console.WriteLine("Current sec is " + DateTime.Now.Second);
+                var res = await CreateClient().TestMethod9("123");
+                Console.WriteLine("Current datetime is " + DateTime.Now);
                 foreach (var r in res)
                     foreach (var s in r.Strs)
                         Console.WriteLine(s);
+                foreach (var r in res)
+                {
+                    Console.WriteLine(r.Dyn);
+                }
             }
             catch (Exception e)
             {

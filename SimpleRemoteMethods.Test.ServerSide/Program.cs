@@ -2,11 +2,8 @@
 using SimpleRemoteMethods.Test.Bases;
 using SimpleRemoteMethods.Utils.Windows;
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.Test.ServerSide
 {
@@ -28,7 +25,7 @@ namespace SimpleRemoteMethods.Test.ServerSide
             var server = new Server<ITestContracts>(new TestContracts(), false, 8082, "1234123412341234");
             server.AuthenticationValidator = new AuthenticationValidatorTest();
             server.MaxConcurrentCalls = 5;
-            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(10);
+            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
             server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
 
             server.MethodCall += Server_MethodCall;

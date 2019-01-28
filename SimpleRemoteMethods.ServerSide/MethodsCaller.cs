@@ -43,7 +43,7 @@ namespace SimpleRemoteMethods.ServerSide
                 if (method.ReturnType.GetCustomAttribute<ProtoContractAttribute>() == null &&
                     method.ReturnType.IsArray &&
                     method.ReturnType != typeof(string))
-                    return new MethodCallResult((Array)result, null, false, false);
+                    return new MethodCallResult(result as Array, null, false, false);
                 return new MethodCallResult(result, null, false, false);
             }
             catch(Exception e)

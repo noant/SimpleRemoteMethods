@@ -23,33 +23,32 @@ namespace SimpleRemoteMethods.Bases
         [ProtoIgnore]
         public object Result
         {
-            get => ProtobufPrimitivesCreator.ExtractFromSurrogate(ResultSurrogate);
-            set => ResultSurrogate = ProtobufPrimitivesCreator.CreateSurrogate(value);
+            get => DynamicSurrogate.Extract(ResultSurrogate);
+            set => ResultSurrogate = DynamicSurrogate.Create(value);
         }
 
         /// <summary>
         /// Protobuf surrogate of Result property
         /// </summary>
-        [ProtoMember(2, DynamicType = true)]
-        public object ResultSurrogate { get; set; }
-
-
-        // There is problem while deserialize T[] arrays (where T with ProtoContractAttribute) packed in one object
+        [ProtoMember(2)]
+        public DynamicSurrogate ResultSurrogate { get; set; }
+        
+        // There is problem while deserialize T[] arrays (where T is class with ProtoContractAttribute) packed in one object
         /// <summary>
         /// Target data if result type is array
         /// </summary>
         [ProtoIgnore]
         public object[] ResultArray
         {
-            get => ProtobufPrimitivesCreator.ExtractFromSurrogates(ResultSurrogateArray);
-            set => ResultSurrogateArray = ProtobufPrimitivesCreator.CreateSurrogates(value);
+            get => DynamicSurrogate.Extract(ResultSurrogateArray);
+            set => ResultSurrogateArray = DynamicSurrogate.Create(value);
         }
 
         /// <summary>
         /// Protobuf surrogate of Result property
         /// </summary>
-        [ProtoMember(3, DynamicType = true)]
-        public object[] ResultSurrogateArray { get; set; }
+        [ProtoMember(3)]
+        public DynamicSurrogate[] ResultSurrogateArray { get; set; }
 
         /// <summary>
         /// Server time

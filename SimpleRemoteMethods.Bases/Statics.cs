@@ -10,6 +10,7 @@ namespace SimpleRemoteMethods.Bases
         static Statics()
         {
             RuntimeTypeModel.Default.AutoAddMissingTypes = true;
+            RuntimeTypeModel.Default.AutoCompile = true;
         }
 
         public static void Settings()

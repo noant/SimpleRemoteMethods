@@ -17,7 +17,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         public MethodCallResult(Array resultArray, Exception callException, bool methodNotFound, bool moreThanOneMethodFound)
         {
-            ResultArray = resultArray.Cast<object>().ToArray();
+            ResultArray = resultArray;
             CallException = callException;
             MethodNotFound = methodNotFound;
             MoreThanOneMethodFound = moreThanOneMethodFound;

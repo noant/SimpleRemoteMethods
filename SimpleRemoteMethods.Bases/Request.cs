@@ -1,8 +1,4 @@
 ﻿using ProtoBuf;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace SimpleRemoteMethods.Bases
 {
@@ -33,11 +29,11 @@ namespace SimpleRemoteMethods.Bases
         /// <summary>
         /// Surrogates for ProtoBuf
         /// </summary>
-        [ProtoMember(3, DynamicType = true)]
-        public object[] ParametersSurrogates
+        [ProtoMember(3)]
+        public DynamicSurrogate[] ParametersSurrogates
         {
-            get => ProtobufPrimitivesCreator.CreateSurrogates(Parameters);
-            set => Parameters = ProtobufPrimitivesCreator.ExtractFromSurrogates(value);
+            get => DynamicSurrogate.Create(Parameters);
+            set => Parameters = DynamicSurrogate.Extract(value);
         }
 
         /// <summary>
