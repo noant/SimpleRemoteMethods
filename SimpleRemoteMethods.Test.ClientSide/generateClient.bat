@@ -1,0 +1,2 @@
+start ..\SimpleRemoteMethods.CodeGen.Windows\bin\Debug\srmGen.exe ..\SimpleRemoteMethods.Test.Bases\bin\Debug\netstandard2.0\SimpleRemoteMethods.Test.Bases.dll SimpleRemoteMethods.Test.Bases.ITestContracts SimpleRemoteMethods.Test.ClientSide TestClientGenerated TestClientGenerated.cs d
+EXIT
