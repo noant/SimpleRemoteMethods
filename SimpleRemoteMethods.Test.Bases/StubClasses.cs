@@ -29,6 +29,8 @@ namespace SimpleRemoteMethods.Test.Bases
         object TestMethod8(TestParameter<TestParameter> param);
         [Remote]
         TestParameter[] TestMethod9(string s);
+        [Remote]
+        void TestMethod10(string[] s);
     }
 
     [ProtoContract]
@@ -185,6 +187,12 @@ namespace SimpleRemoteMethods.Test.Bases
             list.Add(new TestParameter() { Integer = s.Length });
             Thread.Sleep(2000);
             return list.ToArray();
+        }
+
+        public void TestMethod10(string[] s)
+        {
+            foreach (var str in s)
+                Console.WriteLine(str);
         }
     }
 }

@@ -32,6 +32,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Generic();
             //TestClient_Array();
             //TestClient_https();
+            TestClient_StrArray();
 
             Console.ReadKey();
         }
@@ -273,6 +274,19 @@ namespace SimpleRemoteMethods.Test.ClientSide
             catch (Exception e)
             {
                 Console.WriteLine(e.Message);
+            }
+        }
+
+        public async static void TestClient_StrArray()
+        {
+            try
+            {
+                await CreateClient().TestMethod10(new[] { "asd", "asd2" });
+                Console.WriteLine("Success!");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
             }
         }
     }

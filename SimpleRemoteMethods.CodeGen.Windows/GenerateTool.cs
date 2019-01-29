@@ -83,8 +83,6 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                 codeLines.Add(attrs + " " + methodName);
                 codeLines.Add("        {");
 
-                var paramsUsage = "";
-
                 string call = "";
                 if (returnType == typeof(void))
                     call = "await Client.CallMethod";
@@ -99,10 +97,12 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                     call = $"return await Client.CallMethod<{returnTypeName}>";
                 }
 
+                var paramsUsage = "";
+
                 if (parameters.Length != 0)
                 {
                     paramsUsage = parameters.Select(x => x.Name).Aggregate((x1, x2) => x1 + ", " + x2);
-                    call += "(\"" + method.Name + "\", " + paramsUsage + ");";
+                    call += "(\"" + method.Name + "\", new object[] {" + paramsUsage + "});";
                 }
                 else
                     call += "(\"" + method.Name + "\");";

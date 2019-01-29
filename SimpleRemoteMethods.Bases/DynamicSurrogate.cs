@@ -59,9 +59,26 @@ namespace SimpleRemoteMethods.Bases
     [ProtoInclude(112, typeof(DynamicSurrogate<bool>))]
     [ProtoInclude(113, typeof(DynamicSurrogate<char>))]
     [ProtoInclude(114, typeof(DynamicSurrogate<DateTime>))]
-    [ProtoInclude(115, typeof(DynamicSurrogate<string>))] // Not primitive, but used there
-    [ProtoInclude(116, typeof(DynamicObjectSurrogate))]
-    [ProtoInclude(117, typeof(NullSurrogate))]
+    [ProtoInclude(115, typeof(DynamicSurrogate<TimeSpan>))]
+    [ProtoInclude(116, typeof(DynamicSurrogate<string>))]
+    [ProtoInclude(117, typeof(DynamicObjectSurrogate))]
+    [ProtoInclude(118, typeof(NullSurrogate))]
+    [ProtoInclude(119, typeof(DynamicSurrogate<byte[]>))]
+    [ProtoInclude(120, typeof(DynamicSurrogate<sbyte[]>))]
+    [ProtoInclude(121, typeof(DynamicSurrogate<short[]>))]
+    [ProtoInclude(122, typeof(DynamicSurrogate<ushort[]>))]
+    [ProtoInclude(123, typeof(DynamicSurrogate<int[]>))]
+    [ProtoInclude(124, typeof(DynamicSurrogate<uint[]>))]
+    [ProtoInclude(125, typeof(DynamicSurrogate<long[]>))]
+    [ProtoInclude(126, typeof(DynamicSurrogate<ulong[]>))]
+    [ProtoInclude(127, typeof(DynamicSurrogate<float[]>))]
+    [ProtoInclude(128, typeof(DynamicSurrogate<double[]>))]
+    [ProtoInclude(129, typeof(DynamicSurrogate<decimal[]>))]
+    [ProtoInclude(130, typeof(DynamicSurrogate<bool[]>))]
+    [ProtoInclude(131, typeof(DynamicSurrogate<char[]>))]
+    [ProtoInclude(132, typeof(DynamicSurrogate<DateTime[]>))]
+    [ProtoInclude(133, typeof(DynamicSurrogate<TimeSpan[]>))]
+    [ProtoInclude(134, typeof(DynamicSurrogate<string[]>))]
     public abstract class DynamicSurrogate
     {
         private static readonly NullSurrogate NullSurrogate = new NullSurrogate();
@@ -77,9 +94,6 @@ namespace SimpleRemoteMethods.Bases
         {
             if (obj == null)
                 return NullSurrogate;
-
-            if (obj.GetType().IsClass && !(obj is string))
-                return new DynamicObjectSurrogate(obj);
 
             DynamicSurrogate outParam = null;
 
@@ -97,9 +111,30 @@ namespace SimpleRemoteMethods.Bases
             TypeSwitchPack<bool>(obj, ref outParam);
             TypeSwitchPack<char>(obj, ref outParam);
             TypeSwitchPack<DateTime>(obj, ref outParam);
+            TypeSwitchPack<TimeSpan>(obj, ref outParam);
             TypeSwitchPack<string>(obj, ref outParam);
 
-            return outParam;
+            TypeSwitchPack<byte[]>(obj, ref outParam);
+            TypeSwitchPack<sbyte[]>(obj, ref outParam);
+            TypeSwitchPack<ushort[]>(obj, ref outParam);
+            TypeSwitchPack<uint[]>(obj, ref outParam);
+            TypeSwitchPack<ulong[]>(obj, ref outParam);
+            TypeSwitchPack<byte[]>(obj, ref outParam);
+            TypeSwitchPack<int[]>(obj, ref outParam);
+            TypeSwitchPack<long[]>(obj, ref outParam);
+            TypeSwitchPack<float[]>(obj, ref outParam);
+            TypeSwitchPack<double[]>(obj, ref outParam);
+            TypeSwitchPack<decimal[]>(obj, ref outParam);
+            TypeSwitchPack<bool[]>(obj, ref outParam);
+            TypeSwitchPack<char[]>(obj, ref outParam);
+            TypeSwitchPack<DateTime[]>(obj, ref outParam);
+            TypeSwitchPack<TimeSpan[]>(obj, ref outParam);
+            TypeSwitchPack<string[]>(obj, ref outParam);
+
+            if (outParam != null)
+                return outParam;
+
+            return new DynamicObjectSurrogate(obj);
         }
 
         /// <summary>

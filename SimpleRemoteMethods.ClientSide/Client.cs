@@ -150,7 +150,7 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="methodName">Target method name</param>
         /// <param name="parameters">Input parameters</param>
         /// <returns>Return Task<T></returns>
-        public async Task<T> CallMethod<T>(string methodName, params object[] parameters)
+        public async Task<T> CallMethod<T>(string methodName, object[] parameters = null)
         {
             bool exceptionThrown = false;
             if (string.IsNullOrEmpty(CurrentUserToken))
@@ -185,7 +185,7 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="methodName">Target method name</param>
         /// <param name="parameters">Input parameters</param>
         /// <returns>Return Task<T></returns>
-        public async Task<T[]> CallMethodArray<T>(string methodName, params object[] parameters)
+        public async Task<T[]> CallMethodArray<T>(string methodName, object[] parameters = null)
         {
             bool exceptionThrown = false;
             if (string.IsNullOrEmpty(CurrentUserToken))
@@ -218,7 +218,7 @@ namespace SimpleRemoteMethods.ClientSide
         /// </summary>
         /// <param name="methodName">Target method name</param>
         /// <param name="parameters">Input parameters</param>
-        public async Task CallMethod(string methodName, params object[] parameters)
+        public async Task CallMethod(string methodName, object[] parameters = null)
         {
             bool exceptionThrown = false;
             if (string.IsNullOrEmpty(CurrentUserToken))
@@ -245,7 +245,7 @@ namespace SimpleRemoteMethods.ClientSide
             }
         }
 
-        private async Task<Response> SendRequest(string methodName, string returnTypeName, params object[] parameters)
+        private async Task<Response> SendRequest(string methodName, string returnTypeName, object[] parameters)
         {
             var request = PrepareRequest(methodName, returnTypeName, parameters);
             var response = await HttpUtils.SendRequest(_httpClient, CallUri, request, SecretKey, RaiseUserRequest, RaiseServerResponse);
@@ -253,7 +253,7 @@ namespace SimpleRemoteMethods.ClientSide
             return response;
         }
 
-        private async Task<T> CallMethodInternal<T>(string methodName, params object[] parameters)
+        private async Task<T> CallMethodInternal<T>(string methodName, object[] parameters)
         {
             var response = await SendRequest(methodName, typeof(T).FullName, parameters);
             var result = response.Result ?? response.ResultArray;
@@ -262,7 +262,7 @@ namespace SimpleRemoteMethods.ClientSide
             else return default(T);
         }
 
-        private async Task<T[]> CallMethodArrayInternal<T>(string methodName, params object[] parameters)
+        private async Task<T[]> CallMethodArrayInternal<T>(string methodName, object[] parameters)
         {
             var response = await SendRequest(methodName, typeof(T[]).FullName, parameters);
             var result = response.ResultArray;
@@ -271,7 +271,7 @@ namespace SimpleRemoteMethods.ClientSide
             else return default(T[]);
         }
 
-        private async Task CallMethodInternal(string methodName, params object[] parameters)
+        private async Task CallMethodInternal(string methodName, object[] parameters)
         {
             await SendRequest(methodName, typeof(void).FullName, parameters);
         }
@@ -304,7 +304,7 @@ namespace SimpleRemoteMethods.ClientSide
             }
         }
 
-        private Request PrepareRequest(string methodName, string methodReturnParam, params object[] parameters)
+        private Request PrepareRequest(string methodName, string methodReturnParam, object[] parameters)
         {
             var request = new Request();
             request.Method = methodName;

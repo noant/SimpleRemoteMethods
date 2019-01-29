@@ -20,27 +20,27 @@ namespace SimpleRemoteMethods.Test.Bases
 
         public async Task<ITestParameter> TestMethod3(string a, ITestParameter param)
         {
-            return await Client.CallMethod<ITestParameter>(nameof(TestMethod3), a, param);
+            return await Client.CallMethod<ITestParameter>(nameof(TestMethod3), new object[] { a, param });
         }
 
         public async Task TestMethod4(int a)
         {
-            await Client.CallMethod(nameof(TestMethod4), a);
+            await Client.CallMethod(nameof(TestMethod4), new object[] { a });
         }
 
         public async Task TestMethod2(ITestParameter param, int i, string g)
         {
-            await Client.CallMethod(nameof(TestMethod2), param, i, g);
+            await Client.CallMethod(nameof(TestMethod2), new object[] { param, i, g } );
         }
 
         public async Task<ushort> TestMethod5(ushort i)
         {
-            return await Client.CallMethod<ushort>(nameof(TestMethod5), i);
+            return await Client.CallMethod<ushort>(nameof(TestMethod5), new object[] { i });
         }
 
         public async Task<object> TestMethod6(object obj, ITestParameter param)
         {
-            return await Client.CallMethod<object>(nameof(TestMethod6), obj, param);
+            return await Client.CallMethod<object>(nameof(TestMethod6), new object[] { obj, param });
         }
 
         //public async Task<object> TestMethod6(ITestParameter param1, ITestParameter param2)
@@ -50,12 +50,12 @@ namespace SimpleRemoteMethods.Test.Bases
 
         public async Task<object> TestMethod7(AbstractTestParameter2 param)
         {
-            return await Client.CallMethod<object>(nameof(TestMethod7), param);
+            return await Client.CallMethod<object>(nameof(TestMethod7), new object[] { param });
         }
 
         public async Task<object> TestMethod8(TestParameter<TestParameter> param)
         {
-            return await Client.CallMethod<object>(nameof(TestMethod8), param);
+            return await Client.CallMethod<object>(nameof(TestMethod8), new object[] { param });
         }
     }
 }
