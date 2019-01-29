@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace SimpleRemoteMethods.ServerSide
+﻿namespace SimpleRemoteMethods.ServerSide
 {
     /// <summary>
     /// Type of logger record

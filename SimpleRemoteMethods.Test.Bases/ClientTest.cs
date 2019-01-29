@@ -1,7 +1,4 @@
 ﻿using SimpleRemoteMethods.ClientSide;
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.Test.Bases
