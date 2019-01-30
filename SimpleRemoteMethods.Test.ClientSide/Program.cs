@@ -29,7 +29,8 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Generic();
             //TestClient_Array();
             //TestClient_https();
-            TestClient_StrArray();
+            //TestClient_StrArray();
+            TestClient_StrArray2();
 
             Console.ReadKey();
         }
@@ -280,6 +281,29 @@ namespace SimpleRemoteMethods.Test.ClientSide
             {
                 await CreateClient().TestMethod10(new[] { "asd", "asd2" });
                 Console.WriteLine("Success!");
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        public async static void TestClient_StrArray2()
+        {
+            try
+            {
+                var strs = await CreateClient().TestMethod11(10);
+                Console.WriteLine("Total strings received: " + strs.Length);
+                foreach (var str in strs)
+                    Console.WriteLine(str);
+                Console.WriteLine("again with 0");
+                strs = await CreateClient().TestMethod11(0);
+                Console.WriteLine("Total strings received: " + strs.Length);
+                foreach (var str in strs)
+                    Console.WriteLine(str);
+                Console.WriteLine("again with -1");
+                strs = await CreateClient().TestMethod11(-1);
+                Console.WriteLine("Total strings received: " + (strs?.Length.ToString() ?? "nothing"));
             }
             catch (Exception e)
             {

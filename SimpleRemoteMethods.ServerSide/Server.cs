@@ -384,7 +384,7 @@ namespace SimpleRemoteMethods.ServerSide
             if (callInfo.CallException != null)
                 throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
 
-            if (callInfo.ResultArray != null)
+            if (callInfo.IsArray)
                 SendResponse(callInfo.ResultArray, request.Method, context);
             else
                 SendResponse(callInfo.Result, request.Method, context);
@@ -442,7 +442,11 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendResponse(Array resultArr, string method, HttpListenerContext context)
         {
             SendResponse(
-                new Response() { ResultArray = (object[])resultArr, Method = method, ServerTime = DateTime.Now },
+                new Response() {
+                    ResultArray = resultArr as object[],
+                    IsEmptyArray = resultArr != null && resultArr.Length == 0 ? (bool?)true : null,
+                    Method = method,
+                    ServerTime = DateTime.Now },
                 context);
         }
 

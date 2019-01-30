@@ -14,6 +14,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         public MethodCallResult(Array resultArray, Exception callException, bool methodNotFound, bool moreThanOneMethodFound)
         {
+            IsArray = true;
             ResultArray = resultArray;
             CallException = callException;
             MethodNotFound = methodNotFound;
@@ -25,6 +26,8 @@ namespace SimpleRemoteMethods.ServerSide
         public Exception CallException { get; }
         public bool MethodNotFound { get; }
         public bool MoreThanOneMethodFound { get; }
+
+        public bool IsArray { get; }
 
         public bool IsEmpty => Result == null || ResultArray?.Length != 0;
     }

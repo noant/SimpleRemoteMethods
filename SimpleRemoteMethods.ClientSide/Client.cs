@@ -268,7 +268,10 @@ namespace SimpleRemoteMethods.ClientSide
             var result = response.ResultArray;
             if (result != null)
                 return result.Cast<T>().ToArray();
-            else return default(T[]);
+            else if (response.IsEmptyArray ?? false)
+                return new T[0];
+            else
+                return default(T[]);
         }
 
         private async Task CallMethodInternal(string methodName, object[] parameters)

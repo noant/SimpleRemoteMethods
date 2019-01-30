@@ -31,6 +31,8 @@ namespace SimpleRemoteMethods.Test.Bases
         TestParameter[] TestMethod9(string s);
         [Remote]
         void TestMethod10(string[] s);
+        [Remote]
+        string[] TestMethod11(int cnt);
     }
 
     [ProtoContract]
@@ -193,6 +195,16 @@ namespace SimpleRemoteMethods.Test.Bases
         {
             foreach (var str in s)
                 Console.WriteLine(str);
+        }
+
+        public string[] TestMethod11(int cnt)
+        {
+            if (cnt < 0)
+                return null;
+            var strs = new string[cnt];
+            for (int i = 0; i < cnt; i++)
+                strs[i] = DateTime.Now.Ticks.ToString();
+            return strs;
         }
     }
 }

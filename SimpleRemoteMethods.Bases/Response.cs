@@ -49,9 +49,15 @@ namespace SimpleRemoteMethods.Bases
         public DynamicSurrogate[] ResultSurrogateArray { get; set; }
 
         /// <summary>
-        /// Server time
+        /// If true - result is not null but empty array
         /// </summary>
         [ProtoMember(4)]
+        public bool? IsEmptyArray { get; set; }
+
+        /// <summary>
+        /// Server time
+        /// </summary>
+        [ProtoMember(5)]
         public DateTime ServerTime { get; set; }
     }
 }

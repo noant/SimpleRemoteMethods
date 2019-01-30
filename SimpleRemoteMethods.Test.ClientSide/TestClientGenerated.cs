@@ -68,5 +68,10 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             await Client.CallMethod("TestMethod10", new object[] {s});
         }
+
+        public async Task<String[]> TestMethod11(Int32 cnt)
+        {
+            return await Client.CallMethodArray<String>("TestMethod11", new object[] {cnt});
+        }
     }
 }
