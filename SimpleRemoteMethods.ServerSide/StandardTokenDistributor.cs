@@ -12,8 +12,7 @@ namespace SimpleRemoteMethods.ServerSide
 
         public bool Authenticate(string token, out TokenInfo tokenInfo)
         {
-            lock (_tokens)
-                ClearOutdatedTokens();
+            ClearOutdatedTokens();
 
             if (_tokens.ContainsKey(token))
                 tokenInfo = _tokens[token];
@@ -37,6 +36,7 @@ namespace SimpleRemoteMethods.ServerSide
             existingToken.UserName = userName;
             existingToken.Token = CreateNewTokenString();
             existingToken.DistributionDate = DateTime.Now;
+
             lock (_tokens)
                 _tokens.Add(existingToken.Token, existingToken);
 
@@ -56,25 +56,26 @@ namespace SimpleRemoteMethods.ServerSide
 
         private string CreateNewTokenString()
         {
-            var guid = Guid.NewGuid().ToString();
-            while (_tokens.ContainsKey(guid))
-                guid = Guid.NewGuid().ToString();
-            return guid;
+            return Guid.NewGuid().ToString();
         }
 
         private TokenInfo GetTokenInfo(string userName, string clientIp)
         {
-            var tokenInfo = _tokens.Values
-                .FirstOrDefault(x => x.ClientIp == clientIp && x.UserName == userName);
+            lock (_tokens)
+            {
+                var tokenInfo = 
+                    _tokens.Values.FirstOrDefault(x => x.ClientIp == clientIp && x.UserName == userName);
 
-            return tokenInfo;
+                return tokenInfo;
+            }
         }
 
         private void ClearOutdatedTokens()
         {
-            foreach (var tokenInfo in _tokens.Values.ToArray())
-                if (tokenInfo.DistributionDate < (DateTime.Now - TokenLifetime))
-                    _tokens.Remove(tokenInfo.Token);
+            lock (_tokens)
+                foreach (var tokenInfo in _tokens.Values.ToArray())
+                    if (tokenInfo.DistributionDate < (DateTime.Now - TokenLifetime))
+                        _tokens.Remove(tokenInfo.Token);
         }
     }
 }
