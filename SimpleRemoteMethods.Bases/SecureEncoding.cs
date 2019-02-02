@@ -14,17 +14,24 @@ namespace SimpleRemoteMethods
     {
         public readonly static Encoding TextEncoding = Encoding.UTF8;
 
-        private static readonly Random Rand = new Random();
+        private static readonly RNGCryptoServiceProvider RNGCryptoServiceProvider = new RNGCryptoServiceProvider();
         private static Dictionary<string, SecureEncoding> Cached = new Dictionary<string, SecureEncoding>();
         private static readonly object Locker_GetSecureEncoding = new object();
 
+        /// <summary>
+        /// Get cached object
+        /// </summary>
+        /// <param name="key"></param>
+        /// <returns></returns>
         public static SecureEncoding GetSecureEncoding(string key)
         {
             lock (Locker_GetSecureEncoding)
             {
+                SecureEncoding retVal = null;
                 if (!Cached.ContainsKey(key))
-                    Cached.Add(key, new SecureEncoding(key));
-                return Cached[key];
+                    Cached.Add(key, retVal = new SecureEncoding(key));
+                else retVal = Cached[key];
+                return retVal;
             }
         }
 
@@ -68,17 +75,9 @@ namespace SimpleRemoteMethods
         /// <returns>Random 32 bytes</returns>
         public static byte[] CreateSalt() {
             var salt = new byte[32];
-            Rand.NextBytes(salt);
+            RNGCryptoServiceProvider.GetBytes(salt);
             return salt;
         }
-
-        private static byte[] CreateHash(byte[] salt, byte[] data)
-        {
-            using (var hashCreator = new HMACBlake2B(salt, 512))
-                return hashCreator.ComputeHash(data);
-        }
-
-        private readonly string _secretKey;
 
         /// <summary>
         /// Create SecureEncoding object
@@ -87,6 +86,7 @@ namespace SimpleRemoteMethods
         public SecureEncoding(string secretKey)
         {
             _secretKey = secretKey;
+            _secretKeyBytes = TextEncoding.GetBytes(_secretKey);
         }
 
         public SecureEncoding() : this("secret))01234567") { }
@@ -97,32 +97,31 @@ namespace SimpleRemoteMethods
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
         /// <returns>Encrypted data</returns>
-        public string Encrypt(string data, byte[] iv) => Encrypt(TextEncoding.GetBytes(data), iv);
+        public byte[] Encrypt(byte[] data, byte[] iv) => EncryptBytesInternal(data, iv);
 
         /// <summary>
         /// Encrypt data with initialization vector
         /// </summary>
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
-        /// <returns>Encrypted data in bytes</returns>
-        public string Encrypt(byte[] data, byte[] iv) => EncryptInternal(data, iv);
-
-        private string EncryptInternal(byte[] data, byte[] iv)
+        /// <returns>Encrypted data in base64</returns>
+        public string Encrypt(string data, byte[] iv)
         {
-            using (var aes = Aes.Create())
-            {
-                aes.Key = TextEncoding.GetBytes(_secretKey);
-                aes.IV = iv;
+            var dataBytes = TextEncoding.GetBytes(data);
+            return Convert.ToBase64String(EncryptBytesInternal(dataBytes, iv));
+        }
 
-                var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-
-                using (var ms = new MemoryStream())
-                {
-                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-                        cs.Write(data, 0, data.Length);
-                    return Convert.ToBase64String(ms.ToArray());
-                }
-            }
+        /// <summary>
+        /// Decrypt data with initialization vector
+        /// </summary>
+        /// <param name="base64data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Decrypted data</returns>
+        public string Decrypt(string base64data, byte[] iv)
+        {
+            var dataBytes = Convert.FromBase64String(base64data);
+            var bytes = Decrypt(dataBytes, iv);
+            return TextEncoding.GetString(bytes, 0, bytes.Length);
         }
 
         /// <summary>
@@ -130,23 +129,32 @@ namespace SimpleRemoteMethods
         /// </summary>
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
-        /// <returns>Decrypted data</returns>
-        public string Decrypt(string data, byte[] iv)
+        /// <returns>Decrypted data in bytes</returns>
+        public byte[] Decrypt(byte[] data, byte[] iv) => DecryptBytesInternal(data, iv);
+
+        #region private
+
+        private readonly string _secretKey;
+        private readonly byte[] _secretKeyBytes;
+
+        private static byte[] CreateHash(byte[] salt, byte[] data)
         {
-            var bytes = DecryptBytes(data, iv);
-            return TextEncoding.GetString(bytes, 0, bytes.Length);
+            using (var hashCreator = new HMACBlake2B(salt, 512))
+                return hashCreator.ComputeHash(data);
         }
 
-        private byte[] DecryptBytesInternal(string data, byte[] iv)
+        private byte[] DecryptBytesInternal(byte[] data, byte[] iv)
         {
             using (var aes = Aes.Create())
             {
-                aes.Key = TextEncoding.GetBytes(_secretKey);
+                aes.Key = _secretKeyBytes;
                 aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
 
                 var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
 
-                using (var ms = new MemoryStream(Convert.FromBase64String(data)))
+                using (var ms = new MemoryStream(data))
                 using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
                 using (var msReader = new MemoryStream())
                 {
@@ -156,12 +164,26 @@ namespace SimpleRemoteMethods
             }
         }
 
-        /// <summary>
-        /// Decrypt data with initialization vector
-        /// </summary>
-        /// <param name="data">Target data</param>
-        /// <param name="iv">Initialization vector</param>
-        /// <returns>Decrypted data in bytes</returns>
-        public byte[] DecryptBytes(string data, byte[] iv) => DecryptBytesInternal(data, iv);
+        private byte[] EncryptBytesInternal(byte[] data, byte[] iv)
+        {
+            using (var aes = Aes.Create())
+            {
+                aes.Key = _secretKeyBytes;
+                aes.IV = iv;
+                aes.Mode = CipherMode.CBC;
+                aes.Padding = PaddingMode.PKCS7;
+
+                var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
+
+                using (var ms = new MemoryStream())
+                {
+                    using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                        cs.Write(data, 0, data.Length);
+                    return ms.ToArray();
+                }
+            }
+        }
+
+        #endregion
     }
 }

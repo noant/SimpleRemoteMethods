@@ -60,7 +60,7 @@ namespace SimpleRemoteMethods.Bases
                 var saltBytes = Convert.FromBase64String(Salt);
                 var iv = SecureEncoding.CreateIV(saltBytes, secretKey);
                 var secureEncoding = SecureEncoding.GetSecureEncoding(secretKey);
-                var decryptedRaw = secureEncoding.DecryptBytes(Data, iv);
+                var decryptedRaw = secureEncoding.Decrypt(Data, iv);
                 return Deserialize(decryptedRaw);
             }
             catch (Exception e)
@@ -87,7 +87,7 @@ namespace SimpleRemoteMethods.Bases
             };
         }
 
-        private byte[] Serialize(T obj)
+        private string Serialize(T obj)
         {
             using (var ms = new MemoryStream())
             {
@@ -95,13 +95,13 @@ namespace SimpleRemoteMethods.Bases
                 ms.Position = 0;
                 var buff = new byte[ms.Length];
                 ms.Read(buff, 0, (int)ms.Length);
-                return buff;
+                return Convert.ToBase64String(buff);
             }
         }
 
-        private T Deserialize(byte[] raw)
+        private T Deserialize(string raw)
         {
-            using (var ms = new MemoryStream(raw))
+            using (var ms = new MemoryStream(Convert.FromBase64String(raw)))
                 return ProtoBuf.Serializer.Deserialize<T>(ms);
         }
 
