@@ -8,12 +8,12 @@ namespace SimpleRemoteMethods.Bases
 {
     public static class HttpUtils
     {
-        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, string content, Action<HttpRequestMessage> requestPrepared = null)
+        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, byte[] content, Action<HttpRequestMessage> requestPrepared = null)
         {
             try
             {
                 var message = new HttpRequestMessage(HttpMethod.Post, uri);
-                message.Content = new StreamContent(new MemoryStream(Encoding.UTF8.GetBytes(content)));
+                message.Content = new StreamContent(new MemoryStream(content));
                 requestPrepared?.Invoke(message);
                 var response = await client.SendAsync(message);
                 return response;
@@ -27,17 +27,17 @@ namespace SimpleRemoteMethods.Bases
         public static async Task<Response> SendRequest(HttpClient client, Uri uri, Request request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<Request>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString(), requestPrepared))
+            using (var httpResponse = await SendRequest(client, uri, encrypted.Data, requestPrepared))
             {
                 responseReceived?.Invoke(httpResponse);
 
-                var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
-                if (content == null)
+                var content = await httpResponse.Content.ReadAsByteArrayAsync();
+                if (content == null || content.Length == 0)
                     throw RemoteException.Get(RemoteExceptionData.UnknownData);
 
                 if (Encrypted<Response>.IsClass(content))
                 {
-                    var encryptedResponse = Encrypted<Response>.FromString(content);
+                    var encryptedResponse = new Encrypted<Response>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
                         throw RemoteException.Get(RemoteExceptionData.UnknownData);
@@ -45,7 +45,7 @@ namespace SimpleRemoteMethods.Bases
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
                 {
-                    var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
+                    var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
                         throw RemoteException.Get(RemoteExceptionData.UnknownData);
@@ -59,17 +59,17 @@ namespace SimpleRemoteMethods.Bases
         public static async Task<UserTokenResponse> SendUserTokenRequest(HttpClient client, Uri uri, UserTokenRequest request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<UserTokenRequest>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.ToString(), requestPrepared))
+            using (var httpResponse = await SendRequest(client, uri, encrypted.Data, requestPrepared))
             {
                 responseReceived?.Invoke(httpResponse);
 
-                var content = await (httpResponse.Content as StreamContent)?.ReadAsStringAsync();
+                var content = await httpResponse.Content.ReadAsByteArrayAsync();
                 if (content == null)
                     throw RemoteException.Get(RemoteExceptionData.UnknownData);
 
                 if (Encrypted<UserTokenResponse>.IsClass(content))
                 {
-                    var encryptedResponse = Encrypted<UserTokenResponse>.FromString(content);
+                    var encryptedResponse = new Encrypted<UserTokenResponse>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
                         throw RemoteException.Get(RemoteExceptionData.UnknownData);
@@ -77,7 +77,7 @@ namespace SimpleRemoteMethods.Bases
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
                 {
-                    var encryptedErrorData = Encrypted<ErrorResponse>.FromString(content);
+                    var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
                         throw RemoteException.Get(RemoteExceptionData.UnknownData);

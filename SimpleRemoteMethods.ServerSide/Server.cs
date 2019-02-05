@@ -51,7 +51,7 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// Max length of request source data in bytes
         /// </summary>
-        public ulong MaxRequestLength
+        public long MaxRequestLength
         {
             get => _maxMessageLength;
             set
@@ -193,7 +193,7 @@ namespace SimpleRemoteMethods.ServerSide
         private MethodsCaller<T> _caller = new MethodsCaller<T>();
         private ushort _maxConcurrentCalls = 20;
         private ushort _callsCountToStartServerAfterSuspend = 12;
-        private ulong _maxMessageLength = 20000;
+        private long _maxMessageLength = 20000;
         private IAuthenticationValidator _authenticationValidator = new AuthenticationValidatorStub();
         private ITokenDistributor _tokenDistributor = new StandardTokenDistributor();
         private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
@@ -252,10 +252,13 @@ namespace SimpleRemoteMethods.ServerSide
 
         public void Stop()
         {
-            Started = false;
-            _listener.Stop();
-            AfterServerStopped?.Invoke(this, EventArgs.Empty);
-            StopInternal();
+            if (Started)
+            {
+                Started = false;
+                _listener.Stop();
+                AfterServerStopped?.Invoke(this, EventArgs.Empty);
+                StopInternal();
+            }
         }
 
         private void StopInternal() => _startedInternal = false;
@@ -276,18 +279,22 @@ namespace SimpleRemoteMethods.ServerSide
                 if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
                     throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
                 
-                var sourceStr = GetString(context.Request.InputStream);
+                if (context.Request.ContentLength64 > MaxRequestLength)
+                    throw RemoteException.Get(RemoteExceptionData.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
+
+                var content = new byte[context.Request.ContentLength64];
+                context.Request.InputStream.Read(content, 0, content.Length);
 
                 // If encrypted data is Request
-                if (Encrypted<Request>.IsClass(sourceStr))
+                if (Encrypted<Request>.IsClass(content))
                 {
-                    var request = Encrypted<Request>.FromString(sourceStr).Decrypt(SecretCode);
+                    var request = new Encrypted<Request>(content).Decrypt(SecretCode);
                     HandleRequest(request, context);
                 }
                 // If ecnrypted data is UserTokenRequest
-                else if (Encrypted<UserTokenRequest>.IsClass(sourceStr))
+                else if (Encrypted<UserTokenRequest>.IsClass(content))
                 {
-                    var request = Encrypted<UserTokenRequest>.FromString(sourceStr).Decrypt(SecretCode);
+                    var request = new Encrypted<UserTokenRequest>(content).Decrypt(SecretCode);
                     HandleUserTokenRequest(request, context);
                 }
                 else
@@ -309,30 +316,23 @@ namespace SimpleRemoteMethods.ServerSide
             }
         }
 
-        private string GetString(Stream stream)
+        private byte[] GetBytes(Stream stream)
         {
-            const ushort buffLen = 150;
             var maxLength = (int)MaxRequestLength;
 
-            using (var sr = new StreamReader(stream))
+            using (var ms = new MemoryStream())
             {
-                var stringBulder = new StringBuilder();
-
-                var currentCharsCount = 0;
-                var currentIndex = 0;
-
-                var buff = new char[buffLen];
-                while (!sr.EndOfStream)
+                byte[] buffer = new byte[1024];
+                int readCount = 1;
+                while (readCount > 0)
                 {
-                    currentCharsCount = sr.ReadBlock(buff, 0, buffLen);
-                    currentIndex += currentCharsCount;
-                    stringBulder.Append(buff, 0, currentCharsCount);
-
-                    if (currentIndex > maxLength)
-                        throw RemoteException.Get(RemoteExceptionData.TooMuchData, string.Format("Data length cannot be more than {0} bytes", maxLength));
+                    readCount = stream.Read(buffer, 0, Math.Min(buffer.Length, maxLength));
+                    ms.Write(buffer, 0, readCount);
+                    maxLength -= readCount;
+                    if (maxLength < 0)
+                        throw RemoteException.Get(RemoteExceptionData.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
                 }
-
-                return stringBulder.ToString();
+                return ms.ToArray();
             }
         }
 
@@ -468,7 +468,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             ErrorServerResponse?.Invoke(this, new TaggedEventArgs<ErrorResponse>(response));
             var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
-            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            var bytes = encryptedResponse.Data;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }
@@ -477,7 +477,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             ServerResponse?.Invoke(this, new TaggedEventArgs<Response>(response));
             var encryptedResponse = new Encrypted<Response>(response, SecretCode);
-            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            var bytes = encryptedResponse.Data;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }
@@ -486,7 +486,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             ServerUserTokenResponse?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(tokenResponse));
             var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
-            var bytes = Encoding.UTF8.GetBytes(encryptedResponse.ToString());
+            var bytes = encryptedResponse.Data;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
         }

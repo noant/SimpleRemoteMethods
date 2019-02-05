@@ -130,7 +130,16 @@ namespace SimpleRemoteMethods
         /// <param name="data">Target data</param>
         /// <param name="iv">Initialization vector</param>
         /// <returns>Decrypted data in bytes</returns>
-        public byte[] Decrypt(byte[] data, byte[] iv) => DecryptBytesInternal(data, iv);
+        public byte[] Decrypt(byte[] data, byte[] iv) => DecryptBytesInternal(0, data, iv);
+
+        /// <summary>
+        /// Decrypt data with initialization vector
+        /// </summary>
+        /// <param name="offset">Offset from encrypted data begins</param>
+        /// <param name="data">Target data</param>
+        /// <param name="iv">Initialization vector</param>
+        /// <returns>Decrypted data in bytes</returns>
+        public byte[] Decrypt(int offset, byte[] data, byte[] iv) => DecryptBytesInternal(offset, data, iv);
 
         #region private
 
@@ -143,7 +152,7 @@ namespace SimpleRemoteMethods
                 return hashCreator.ComputeHash(data);
         }
 
-        private byte[] DecryptBytesInternal(byte[] data, byte[] iv)
+        private byte[] DecryptBytesInternal(int offset, byte[] data, byte[] iv)
         {
             using (var aes = Aes.Create())
             {
@@ -154,7 +163,7 @@ namespace SimpleRemoteMethods
 
                 var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
 
-                using (var ms = new MemoryStream(data))
+                using (var ms = new MemoryStream(data, offset, data.Length - offset))
                 using (var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read))
                 using (var msReader = new MemoryStream())
                 {

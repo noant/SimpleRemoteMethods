@@ -30,7 +30,8 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_Array();
             //TestClient_https();
             //TestClient_StrArray();
-            TestClient_StrArray2();
+            //TestClient_StrArray2();
+            TestClient_LongData();
 
             Console.ReadKey();
         }
@@ -304,6 +305,19 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 Console.WriteLine("again with -1");
                 strs = await CreateClient().TestMethod11(-1);
                 Console.WriteLine("Total strings received: " + (strs?.Length.ToString() ?? "nothing"));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+        }
+
+        public async static void TestClient_LongData()
+        {
+            try
+            {
+                var result = await CreateClient().TestMethod12(9999999);
+                Console.WriteLine("Result OK. Count: " + result.LongLength);
             }
             catch (Exception e)
             {
