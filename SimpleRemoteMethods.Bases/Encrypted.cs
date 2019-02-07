@@ -39,12 +39,12 @@ namespace SimpleRemoteMethods.Bases
                 {
                     var typeNameBytes = Encoding.UTF8.GetBytes(typeof(T).FullName);
                     if (typeNameBytes.Length > byte.MaxValue)
-                        throw RemoteException.Get(RemoteExceptionData.InternalServerError, "Type name bytes must be less than 256 bytes");
+                        throw new RemoteException(ErrorCode.InternalServerError, "Type name bytes must be less than 256 bytes");
                     ms.WriteByte((byte)typeNameBytes.Length);
                     ms.Write(typeNameBytes, 0, typeNameBytes.Length);
 
                     if (_salt.Length > byte.MaxValue)
-                        throw RemoteException.Get(RemoteExceptionData.InternalServerError, "Salt must be less than 256 bytes");
+                        throw new RemoteException(ErrorCode.InternalServerError, "Salt must be less than 256 bytes");
                     ms.WriteByte((byte)_salt.Length);
                     ms.Write(_salt, 0, _salt.Length);
 
@@ -58,7 +58,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "/", e);
+                throw new RemoteException(ErrorCode.DecryptionErrorCode, "/", e);
             }
         }
 
@@ -79,7 +79,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "/", e);
+                throw new RemoteException(ErrorCode.DecryptionErrorCode, "/", e);
             }
         }
 
@@ -99,7 +99,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "/", e);
+                throw new RemoteException(ErrorCode.DecryptionErrorCode, "/", e);
             }
         }
         

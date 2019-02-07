@@ -195,7 +195,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             {
                 await client.TestMethod2(null, 1, "123");
             }
-            catch (RemoteException e) when (e.Code == RemoteExceptionData.InternalServerError)
+            catch (RemoteException e) when (e.Code == ErrorCode.InternalServerError)
             {
                 Console.WriteLine(e.Message);
             }

@@ -48,10 +48,10 @@ namespace SimpleRemoteMethods.ClientSide
             if (timeout != default(TimeSpan))
                 _httpClient.Timeout = timeout;
 
-            Host = host ?? throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "Host cannot be null");
+            Host = host ?? throw new RemoteException(ErrorCode.DecryptionErrorCode, "Host cannot be null");
             Port = port;
             Ssl = ssl;
-            SecretKey = secretKey ?? throw RemoteException.Get(RemoteExceptionData.DecryptionErrorCode, "SecretCode cannot be null");
+            SecretKey = secretKey ?? throw new RemoteException(ErrorCode.DecryptionErrorCode, "SecretCode cannot be null");
             Login = login;
             Password = password;
 
@@ -159,13 +159,13 @@ namespace SimpleRemoteMethods.ClientSide
             {
                 return await CallMethodInternal<T>(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            catch (RemoteException e) when (e.Data.Code == ErrorCode.UserTokenExpired)
             {
                 UserTokenExpired?.Invoke(this, new TaggedEventArgs<string>(CurrentUserToken));
                 await RefreshToken();
                 return await CallMethodInternal<T>(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            catch (RemoteException e) when (e.Code != ErrorCode.InternalServerError)
             {
                 exceptionThrown = true;
                 RaiseConnectionError(e);
@@ -194,13 +194,13 @@ namespace SimpleRemoteMethods.ClientSide
             {
                 return await CallMethodArrayInternal<T>(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Data.Code == RemoteExceptionData.UserTokenExpired)
+            catch (RemoteException e) when (e.Data.Code == ErrorCode.UserTokenExpired)
             {
                 UserTokenExpired?.Invoke(this, new TaggedEventArgs<string>(CurrentUserToken));
                 await RefreshToken();
                 return await CallMethodArrayInternal<T>(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            catch (RemoteException e) when (e.Code != ErrorCode.InternalServerError)
             {
                 exceptionThrown = true;
                 RaiseConnectionError(e);
@@ -227,12 +227,12 @@ namespace SimpleRemoteMethods.ClientSide
             {
                 await CallMethodInternal(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Code == RemoteExceptionData.UserTokenExpired)
+            catch (RemoteException e) when (e.Code == ErrorCode.UserTokenExpired)
             {
                 await RefreshToken();
                 await CallMethodInternal(methodName, parameters);
             }
-            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            catch (RemoteException e) when (e.Code != ErrorCode.InternalServerError)
             {
                 exceptionThrown = true;
                 RaiseConnectionError(e);
@@ -294,7 +294,7 @@ namespace SimpleRemoteMethods.ClientSide
                 NewUserTokenIssued?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(response));
                 CurrentUserToken = response.UserToken;
             }
-            catch (RemoteException e) when (e.Code != RemoteExceptionData.InternalServerError)
+            catch (RemoteException e) when (e.Code != ErrorCode.InternalServerError)
             {
                 exceptionThrown = true;
                 RaiseConnectionError(e);

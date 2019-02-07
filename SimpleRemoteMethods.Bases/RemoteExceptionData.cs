@@ -13,7 +13,7 @@ namespace SimpleRemoteMethods.Bases
         /// </summary>
         /// <param name="code">Error code</param>
         /// <param name="message">Custom message</param>
-        public RemoteExceptionData(string code, string message = "")
+        public RemoteExceptionData(ErrorCode code, string message = "")
         {
             Code = code;
             Message = message;
@@ -30,20 +30,7 @@ namespace SimpleRemoteMethods.Bases
         /// <summary>
         /// Error code
         /// </summary>
-        [ProtoMember(2)]
-        public string Code { get; set; }
-
-        public const string DecryptionErrorCode = "0";
-        public const string UnknownData = "1";
-        public const string UserTokenExpired = "2";
-        public const string LoginOrPasswordInvalid = "4";
-        public const string RequestIdFabrication = "5";
-        public const string BruteforceSuspicion = "6";
-        public const string MethodNotFound = "7";
-        public const string MoreThanOneMethodFound = "8";
-        public const string InternalServerError = "9";
-        public const string ConnectionError = "10";
-        public const string TooMuchData = "11";
-        public const string AccessDenied = "12";
+        [ProtoMember(2, IsRequired = true)]
+        public ErrorCode Code { get; set; }
     }
 }

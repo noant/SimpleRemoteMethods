@@ -277,10 +277,10 @@ namespace SimpleRemoteMethods.ServerSide
 
                 // Check is wait list contains current client IP
                 if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
-                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
+                    throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
                 
                 if (context.Request.ContentLength64 > MaxRequestLength)
-                    throw RemoteException.Get(RemoteExceptionData.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
+                    throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
 
                 var content = new byte[context.Request.ContentLength64];
                 context.Request.InputStream.Read(content, 0, content.Length);
@@ -298,7 +298,7 @@ namespace SimpleRemoteMethods.ServerSide
                     HandleUserTokenRequest(request, context);
                 }
                 else
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData, clientIp);
+                    throw new RemoteException(ErrorCode.UnknownData, clientIp);
             }
             catch (RemoteException remoteException)
             {
@@ -308,7 +308,7 @@ namespace SimpleRemoteMethods.ServerSide
             catch (Exception exception)
             {
                 RaiseLogRecord(LogType.Error, exception);
-                SendErrorResponse(new RemoteExceptionData(RemoteExceptionData.InternalServerError, exception.Message), context);
+                SendErrorResponse(new RemoteExceptionData(ErrorCode.InternalServerError, exception.Message), context);
             }
             finally
             {
@@ -330,7 +330,7 @@ namespace SimpleRemoteMethods.ServerSide
                     ms.Write(buffer, 0, readCount);
                     maxLength -= readCount;
                     if (maxLength < 0)
-                        throw RemoteException.Get(RemoteExceptionData.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
+                        throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
                 }
                 return ms.ToArray();
             }
@@ -345,7 +345,7 @@ namespace SimpleRemoteMethods.ServerSide
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
-                throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+                throw new RemoteException(ErrorCode.RequestIdFabrication);
 
             RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] request id [{1}] normal...", clientIp, request.RequestId));
 
@@ -353,7 +353,7 @@ namespace SimpleRemoteMethods.ServerSide
             if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
                 _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
             else
-                throw RemoteException.Get(RemoteExceptionData.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+                throw new RemoteException(ErrorCode.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
 
             RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] connected...", tokenInfo.UserName, clientIp));
 
@@ -362,7 +362,7 @@ namespace SimpleRemoteMethods.ServerSide
                 var beforeMethodCallEventArgs = new RequestEventArgs(request, clientIp, tokenInfo.UserName, tokenInfo.Token);
                 MethodCall(this, beforeMethodCallEventArgs);
                 if (beforeMethodCallEventArgs.ProhibitMethodExecution)
-                    throw RemoteException.Get(RemoteExceptionData.AccessDenied, string.Format("Access to method [{0}] denied for user [{1}][{2}]", request.Method, tokenInfo.UserName, clientIp));
+                    throw new RemoteException(ErrorCode.AccessDenied, string.Format("Access to method [{0}] denied for user [{1}][{2}]", request.Method, tokenInfo.UserName, clientIp));
             }
 
             // Try to get method info and call
@@ -374,15 +374,15 @@ namespace SimpleRemoteMethods.ServerSide
 
             // Check if method not exist
             if (callInfo.MethodNotFound)
-                throw RemoteException.Get(RemoteExceptionData.MethodNotFound, tokenInfo.UserName, clientIp);
+                throw new RemoteException(ErrorCode.MethodNotFound, tokenInfo.UserName, clientIp);
 
             // Check parameters conflict
             if (callInfo.MoreThanOneMethodFound)
-                throw RemoteException.Get(RemoteExceptionData.MoreThanOneMethodFound, tokenInfo.UserName, clientIp);
+                throw new RemoteException(ErrorCode.MoreThanOneMethodFound, tokenInfo.UserName, clientIp);
 
             // If target method threw an exception
             if (callInfo.CallException != null)
-                throw RemoteException.Get(RemoteExceptionData.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
+                throw new RemoteException(ErrorCode.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
 
             if (callInfo.IsArray)
                 SendResponse(callInfo.ResultArray, request.Method, context);
@@ -400,12 +400,12 @@ namespace SimpleRemoteMethods.ServerSide
 
             // Check is wait list contains current client login
             if (BruteforceCheckerByLogin.IsWaitListContains(clientIp))
-                throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, request.Login, clientIp);
+                throw new RemoteException(ErrorCode.BruteforceSuspicion, request.Login, clientIp);
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
-                throw RemoteException.Get(RemoteExceptionData.RequestIdFabrication);
+                throw new RemoteException(ErrorCode.RequestIdFabrication);
 
             RaiseLogRecord(LogType.Debug, string.Format("Ip [{0}] request id [{1}] normal (user token request)...", clientIp, request.RequestId));
 
@@ -414,13 +414,13 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 // Handle bruteforce suspicion by ip
                 if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
-                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, "by IP", clientIp);
+                    throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
 
                 // Handle bruteforce suspicion by login
                 if (BruteforceCheckerByLogin.CheckIsBruteforce(request.Login))
-                    throw RemoteException.Get(RemoteExceptionData.BruteforceSuspicion, request.Login, clientIp);
+                    throw new RemoteException(ErrorCode.BruteforceSuspicion, request.Login, clientIp);
 
-                throw RemoteException.Get(RemoteExceptionData.LoginOrPasswordInvalid, clientIp);
+                throw new RemoteException(ErrorCode.LoginOrPasswordInvalid, clientIp);
             }
 
             RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] password authentication success...", request.Login, clientIp));

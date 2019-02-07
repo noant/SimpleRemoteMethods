@@ -20,7 +20,7 @@ namespace SimpleRemoteMethods.Bases
             }
             catch (Exception e)
             {
-                throw RemoteException.Get(RemoteExceptionData.ConnectionError, "/", e);
+                throw new RemoteException(ErrorCode.ConnectionError, "/", e);
             }
         }
 
@@ -33,14 +33,14 @@ namespace SimpleRemoteMethods.Bases
 
                 var content = await httpResponse.Content.ReadAsByteArrayAsync();
                 if (content == null || content.Length == 0)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    throw new RemoteException(ErrorCode.UnknownData);
 
                 if (Encrypted<Response>.IsClass(content))
                 {
                     var encryptedResponse = new Encrypted<Response>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
-                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                        throw new RemoteException(ErrorCode.UnknownData);
                     return response;
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
@@ -48,11 +48,11 @@ namespace SimpleRemoteMethods.Bases
                     var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
-                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                    throw RemoteException.Get(errorResponse.ErrorData);
+                        throw new RemoteException(ErrorCode.UnknownData);
+                    throw new RemoteException(errorResponse.ErrorData);
                 }
 
-                throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                throw new RemoteException(ErrorCode.UnknownData);
             }
         }
 
@@ -65,14 +65,14 @@ namespace SimpleRemoteMethods.Bases
 
                 var content = await httpResponse.Content.ReadAsByteArrayAsync();
                 if (content == null)
-                    throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                    throw new RemoteException(ErrorCode.UnknownData);
 
                 if (Encrypted<UserTokenResponse>.IsClass(content))
                 {
                     var encryptedResponse = new Encrypted<UserTokenResponse>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
-                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                        throw new RemoteException(ErrorCode.UnknownData);
                     return response;
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
@@ -80,11 +80,11 @@ namespace SimpleRemoteMethods.Bases
                     var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
-                        throw RemoteException.Get(RemoteExceptionData.UnknownData);
-                    throw RemoteException.Get(errorResponse.ErrorData);
+                        throw new RemoteException(ErrorCode.UnknownData);
+                    throw new RemoteException(errorResponse.ErrorData);
                 }
 
-                throw RemoteException.Get(RemoteExceptionData.UnknownData);
+                throw new RemoteException(ErrorCode.UnknownData);
             }
         }
     }
