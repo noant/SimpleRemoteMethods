@@ -222,29 +222,47 @@ namespace SimpleRemoteMethods.ServerSide
         {
             new Task(() =>
             {
-                _listener.Start();
-
-                if (!Started)
-                {
-                    AfterServerStarted?.Invoke(this, EventArgs.Empty);
-                    RaiseLogRecord(LogType.Info, string.Format("Server {0}://localhost:{1} started...", Ssl ? "https" : "http", Port));
-                }
-
-                Started = true;
-                _startedInternal = true;
-                while (Started && _startedInternal)
+                bool startError = true;
+                if (!_listener.IsListening)
                 {
                     try
                     {
-                        var context = _listener.GetContext();
-                        Task.Run(() => HandleContext(context));
+                        _listener.Start();
+                        startError = false;
                     }
                     catch (Exception e)
                     {
                         RaiseLogRecord(LogType.Error, e);
                     }
                 }
-                RaiseLogRecord(LogType.Info, "Server stopped or suspended...");
+
+                if (!startError)
+                {
+                    if (!Started)
+                    {
+                        Started = true;
+                        AfterServerStarted?.Invoke(this, EventArgs.Empty);
+                        RaiseLogRecord(LogType.Info, string.Format("Server {0}://localhost:{1} started...", Ssl ? "https" : "http", Port));
+                    }
+
+                    _startedInternal = true;
+                    while (Started && _startedInternal)
+                    {
+                        HttpListenerContext context = null;
+                        try
+                        {
+                            context = _listener.GetContext();
+                        }
+                        catch (Exception e)
+                        {
+                            RaiseLogRecord(LogType.Error, e);
+                            Stop();
+                        }
+                        if (context != null)
+                            Task.Run(() => HandleContext(context));
+                    }
+                    RaiseLogRecord(LogType.Info, "Server stopped or suspended...");
+                }
             },
             TaskCreationOptions.LongRunning)
             .Start();
@@ -255,7 +273,7 @@ namespace SimpleRemoteMethods.ServerSide
             if (Started)
             {
                 Started = false;
-                _listener.Stop();
+                _listener.Close();
                 AfterServerStopped?.Invoke(this, EventArgs.Empty);
                 StopInternal();
             }
