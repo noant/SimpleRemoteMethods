@@ -14,15 +14,14 @@ namespace SimpleRemoteMethods.Test.ServerSide
             TestServer();
 
             //TestServer_Stop();
-
             //TestServer_https();
 
             Console.ReadKey();
         }
 
-        private static Server<ITestContracts> CreateServer()
+        private static Server<ITestContracts> CreateServer(bool ssl = false)
         {
-            var server = new Server<ITestContracts>(new TestContracts(), false, 8082, "1234123412341234");
+            var server = new Server<ITestContracts>(new TestContracts(), ssl, 8082, "1234123412341234");
             server.AuthenticationValidator = new AuthenticationValidatorTest();
             server.MaxConcurrentCalls = 5;
             server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);
@@ -30,7 +29,13 @@ namespace SimpleRemoteMethods.Test.ServerSide
 
             server.MethodCall += Server_MethodCall;
 
-            ServerHelper.PrepareHttpServer(server);
+            if (ssl)
+            {
+                var certHash = ServerHelper.GetInstalledCertificates().First().Hash;
+                ServerHelper.PrepareHttpsServer(server, certHash);
+            }
+            else
+                ServerHelper.PrepareHttpServer(server);
 
             return server;
         }
@@ -58,15 +63,7 @@ namespace SimpleRemoteMethods.Test.ServerSide
 
         public static void TestServer_https()
         {
-            var server = new Server<ITestContracts>(new TestContracts(), true, 4041, "1234123412341234");
-            server.AuthenticationValidator = new AuthenticationValidatorTest();
-            server.MaxConcurrentCalls = 5;
-            server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(100);
-            server.LogRecord += (o, e) => Console.WriteLine(e.Exception?.ToString() ?? e.Message);
-
-            var certHash = ServerHelper.GetInstalledCertificates().First().Hash;
-
-            ServerHelper.PrepareHttpsServer(server, certHash);
+            var server = CreateServer(ssl: true);
             server.StartAsync();
         }
 

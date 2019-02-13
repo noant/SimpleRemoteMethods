@@ -22,11 +22,8 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                 try
                 {
                     Console.WriteLine("Code generation begin...");
-
                     var output = GenerateTool.GenerateClass(libPath, interfaceName, gNamespace, gClassName);
-
                     File.WriteAllText(path, output);
-
                     Console.WriteLine("Code generated successfully!");
                 }
                 catch (Exception e)

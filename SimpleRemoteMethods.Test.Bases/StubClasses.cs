@@ -52,8 +52,6 @@ namespace SimpleRemoteMethods.Test.Bases
             {
                 Tag = DateTime.Now.ToString()
             };
-
-            //Dyn = DateTime.Now.Second;
         }
 
         [ProtoMember(1)]
@@ -74,9 +72,6 @@ namespace SimpleRemoteMethods.Test.Bases
             get => DynamicSurrogate.Create(Dyn);
             set => Dyn = DynamicSurrogate.Extract(value);
         }
-
-        //[ProtoMember(4)]
-        //public string Dyn { get; set; } = DateTime.Now.ToString();
     }
 
     [ProtoContract]
@@ -103,7 +98,6 @@ namespace SimpleRemoteMethods.Test.Bases
 
         [ProtoIgnore]
         public object TestString { get; set; } = DateTime.Now.ToString() + " success!";
-        //public object TestString { get; set; } = DateTime.Now.Second;
 
         [ProtoMember(3)]
         public DynamicSurrogate TestStringSurr

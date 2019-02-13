@@ -248,13 +248,13 @@ namespace SimpleRemoteMethods.Test.ClientSide
             {
                 var res = await CreateClient().TestMethod9("123");
                 Console.WriteLine("Current datetime is " + DateTime.Now);
+
                 foreach (var r in res)
                     foreach (var s in r.Strs)
                         Console.WriteLine(s);
+
                 foreach (var r in res)
-                {
                     Console.WriteLine(r.Dyn);
-                }
             }
             catch (Exception e)
             {

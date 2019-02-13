@@ -16,11 +16,21 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             var codeLines = new List<string>();
             var usings = new List<string>();
 
+            void appendUsings(List<Type> types)
+            {
+                foreach (var typeForUsing in types)
+                {
+                    var @using = "using " + typeForUsing.Namespace + ";";
+                    if (!usings.Contains(@using) && typeForUsing.Namespace != generatedClassNamespace)
+                        usings.Add(@using);
+                }
+            }
+
             var assembly = Assembly.LoadFrom(path);
             var type = assembly.GetTypes().FirstOrDefault(x => x.IsInterface && x.Namespace + "." + x.Name == interfaceFullName);
 
             if (type == null)
-                throw new Exception($"Type {interfaceFullName} not found");
+                throw new Exception($"Type [{interfaceFullName}] not found");
 
             var methods = type.GetMethods().Where(x => x.GetCustomAttributes().Any(z => z is RemoteAttribute)).ToArray();
 
@@ -47,7 +57,7 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                 var returnType = method.ReturnType;
                 var typeConstruction = new List<Type>();
                 var returnTypeName = returnType.GetFriendlyName(typeConstruction);
-                AppendUsings(typeConstruction, usings, generatedClassNamespace);
+                appendUsings(typeConstruction);
                 codeLines.Add(string.Empty);
                 var attrs = "        public async Task";
                 if (returnType != typeof(void))
@@ -71,11 +81,14 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                         var paramTypeConstruction = new List<Type>();
                         var paramTypeName = paramType.GetFriendlyName(paramTypeConstruction);
 
-                        AppendUsings(paramTypeConstruction, usings, generatedClassNamespace);
+                        appendUsings(paramTypeConstruction);
 
-                        paramsStr += ", " + paramTypeName + " " + paramName;
+                        if (!string.IsNullOrEmpty(paramsStr))
+                            paramsStr += ", ";
+
+                        paramsStr += paramTypeName + " " + paramName;
                     }
-                    methodName += "(" + paramsStr.Substring(2) + ")";
+                    methodName += "(" + paramsStr + ")";
                 }
 
                 codeLines.Add(attrs + " " + methodName);
@@ -87,7 +100,7 @@ namespace SimpleRemoteMethods.CodeGen.Windows
                 else if (returnType.IsArray)
                 {
                     var innerType = returnType.GetElementType();
-                    AppendUsings(new List<Type> { innerType }, usings, generatedClassNamespace);
+                    appendUsings(new List<Type> { innerType });
                     call = $"return await Client.CallMethodArray<{innerType.Name}>";
                 }
                 else
@@ -99,11 +112,11 @@ namespace SimpleRemoteMethods.CodeGen.Windows
 
                 if (parameters.Length != 0)
                 {
-                    paramsUsage = parameters.Select(x => x.Name).Aggregate((x1, x2) => x1 + ", " + x2);
-                    call += "(\"" + method.Name + "\", new object[] {" + paramsUsage + "});";
+                    paramsUsage = string.Join(", ", parameters.Select(x => x.Name));
+                    call += $"(\"{method.Name}\", new object[] {{{paramsUsage}}});";
                 }
                 else
-                    call += "(\"" + method.Name + "\");";
+                    call += $"(\"{method.Name}\");";
 
                 codeLines.Add("            "+call);
                 codeLines.Add("        }");
@@ -125,16 +138,6 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             }
 
             return sb.ToString();
-        }
-
-        private static void AppendUsings(List<Type> types, List<string> allUsings, string mainNamespace)
-        {
-            foreach (var type in types)
-            {
-                var @using = "using " + type.Namespace + ";";
-                if (!allUsings.Contains(@using) && type.Namespace != mainNamespace)
-                    allUsings.Add(@using);
-            }
         }
     }
 }

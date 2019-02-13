@@ -40,11 +40,6 @@ namespace SimpleRemoteMethods.Test.Bases
             return await Client.CallMethod<object>(nameof(TestMethod6), new object[] { obj, param });
         }
 
-        //public async Task<object> TestMethod6(ITestParameter param1, ITestParameter param2)
-        //{
-        //    return await Client.CallMethod<object>(nameof(TestMethod6), param1, param2);
-        //}
-
         public async Task<object> TestMethod7(AbstractTestParameter2 param)
         {
             return await Client.CallMethod<object>(nameof(TestMethod7), new object[] { param });

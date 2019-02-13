@@ -28,10 +28,7 @@ namespace SimpleRemoteMethods.Test.Encryption
 
                 var bytes = Convert.FromBase64String(encrypted);
 
-                var bytesStringView = 
-                    bytes
-                    .Select(x => x.ToString())
-                    .Aggregate((b1, b2) => b1 + " " + b2);
+                var bytesStringView = string.Join(" ", bytes.Select(x => x.ToString()));
 
                 tbEncryptedBytes.Text = bytesStringView;
             }
