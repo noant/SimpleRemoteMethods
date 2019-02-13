@@ -16,7 +16,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="server"></param>
         public static void PrepareHttpServer<T>(Server<T> server)
         {
-            var serverAddress = string.Format("http://localhost:{0}", server.Port);
+            var serverAddress = $"http://localhost:{server.Port}";
             var currentServerName = (typeof(T).Name).Replace("'", string.Empty) + "-http";
 
             server.BeforeServerStart += (o, e) => {
@@ -38,7 +38,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="certificateHash">Certificate hash from windows cetificates store</param>
         public static void PrepareHttpsServer<T>(Server<T> server, string certificateHash)
         {
-            var serverAddress = string.Format("https://localhost:{0}", server.Port);
+            var serverAddress = $"https://localhost:{server.Port}";
             var currentServerName = (typeof(T).Name).Replace("'", string.Empty) + "-https";
             
             server.BeforeServerStart += (o, e) => {

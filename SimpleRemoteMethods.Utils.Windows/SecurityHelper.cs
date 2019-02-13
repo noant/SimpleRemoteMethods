@@ -28,7 +28,7 @@ namespace SimpleRemoteMethods.Utils.Windows
                 .FirstOrDefault(x => x.GetCertHashString().Equals(certificateHash));
 
             if (cert == null)
-                throw new Exception(string.Format("Cannot found certificate [{0}]", certificateHash));
+                throw new Exception($"Cannot found certificate [{certificateHash}]");
 
             var appid = ((GuidAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(GuidAttribute), true)[0]).Value;
 
@@ -60,7 +60,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void ReserveUrl(string address)
         {
             RemoveAddressReservation(address);
-            var commandString = string.Format(@" http add urlacl url={0} user={1}\{2}", address, Environment.UserDomainName, Environment.UserName);
+            var commandString = $@" http add urlacl url={address} user={Environment.UserDomainName}\{Environment.UserName}";
 
             ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), commandString);
         }
@@ -71,7 +71,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="address"></param>
         public static void RemoveAddressReservation(string address)
         {
-            var commandString = string.Format(@" http delete urlacl url={0}", address.Replace("https://", "http://"));
+            var commandString = $@" http delete urlacl url={address.Replace("https://", "http://")}";
             ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), commandString);
         }
 
@@ -100,8 +100,8 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="port"></param>
         public static void AddFirewallRuleForPort(string ruleName, ushort port)
         {
-            var commandRemove = string.Format(" advfirewall firewall delete rule name = \"{0}\"", ruleName);
-            var commandAdd = string.Format(" firewall add portopening TCP {0} {1} enable ALL", port, ruleName);
+            var commandRemove = $" advfirewall firewall delete rule name = \"{ruleName}\"";
+            var commandAdd = $" firewall add portopening TCP {port} {ruleName} enable ALL";
             var netshpath = Path.Combine(Environment.SystemDirectory, "netsh.exe");
             ExecuteProcess(netshpath, commandRemove);
             ExecuteProcess(netshpath, commandAdd);
@@ -113,7 +113,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="ruleName"></param>
         public static void RemoveFirewallRule(string ruleName)
         {
-            var commandRemove = string.Format(" advfirewall firewall delete rule name = \"{0}\"", ruleName);
+            var commandRemove = $" advfirewall firewall delete rule name = \"{ruleName}\"";
             var netshpath = Path.Combine(Environment.SystemDirectory, "netsh.exe");
             ExecuteProcess(netshpath, commandRemove);
         }

@@ -55,7 +55,7 @@ namespace SimpleRemoteMethods.ClientSide
             Login = login;
             Password = password;
 
-            CallUri = new Uri(string.Format(@"{0}://{1}:{2}", ssl ? "https" : "http", host, port));
+            CallUri = new Uri($@"{(ssl ? "https" : "http")}://{host}:{port}");
         }
         
         /// <summary>

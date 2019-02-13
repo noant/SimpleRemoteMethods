@@ -39,7 +39,7 @@ namespace SimpleRemoteMethods.Bases
         /// <param name="clientIp">Client ip</param>
         /// <param name="innerException">Inner exception</param>
         public RemoteException(ErrorCode code, string user, string clientIp, Exception innerException = null):
-            this(code, string.Format("User: {0}, IP: {1}", user ?? "[unknown]", clientIp ?? "[unknown]"), innerException)
+            this(code, $"User: {user ?? "[unknown]"}, IP: {clientIp ?? "[unknown]"}", innerException)
         {
             // Empty
         }

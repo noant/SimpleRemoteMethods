@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Net;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.ServerSide
@@ -209,9 +208,9 @@ namespace SimpleRemoteMethods.ServerSide
             BeforeServerStart?.Invoke(this, EventArgs.Empty);
 
             _listener = new HttpListener();
-            _listener.Prefixes.Add(string.Format("{0}://+:{1}/", Ssl ? "https" : "http", Port));
-            _listener.Prefixes.Add(string.Format("{0}://localhost:{1}/", Ssl ? "https" : "http", Port));
-            _listener.Prefixes.Add(string.Format("{0}://127.0.0.1:{1}/", Ssl ? "https" : "http", Port));
+            _listener.Prefixes.Add($"{(Ssl ? "https" : "http")}://+:{Port}/");
+            _listener.Prefixes.Add($"{(Ssl ? "https" : "http")}://localhost:{Port}/");
+            _listener.Prefixes.Add($"{(Ssl ? "https" : "http")}://127.0.0.1:{Port}/");
 
             HttpListenerCustomSetting?.Invoke(this, new TaggedEventArgs<HttpListener>(_listener));
 
@@ -222,7 +221,7 @@ namespace SimpleRemoteMethods.ServerSide
         {
             new Task(() =>
             {
-                bool startError = true;
+                bool startError = false;
                 if (!_listener.IsListening)
                 {
                     try
@@ -233,6 +232,7 @@ namespace SimpleRemoteMethods.ServerSide
                     catch (Exception e)
                     {
                         RaiseLogRecord(LogType.Error, e);
+                        startError = true;
                     }
                 }
 
@@ -242,7 +242,7 @@ namespace SimpleRemoteMethods.ServerSide
                     {
                         Started = true;
                         AfterServerStarted?.Invoke(this, EventArgs.Empty);
-                        RaiseLogRecord(LogType.Info, string.Format("Server {0}://localhost:{1} started...", Ssl ? "https" : "http", Port));
+                        RaiseLogRecord(LogType.Info, $"Server {(Ssl ? "https" : "http")}://localhost:{Port} started...");
                     }
 
                     _startedInternal = true;
@@ -291,7 +291,7 @@ namespace SimpleRemoteMethods.ServerSide
 
                 var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
-                RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] connected...", clientIp));
+                RaiseLogRecord(LogType.Debug, $"Client [{clientIp}] connected...");
 
                 // Check is wait list contains current client IP
                 if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
@@ -365,7 +365,7 @@ namespace SimpleRemoteMethods.ServerSide
                 !RequestChecker.IsNewRequest(request.RequestId))
                 throw new RemoteException(ErrorCode.RequestIdFabrication);
 
-            RaiseLogRecord(LogType.Debug, string.Format("Client [{0}] request id [{1}] normal...", clientIp, request.RequestId));
+            RaiseLogRecord(LogType.Debug, $"Client [{clientIp}] request id [{request.RequestId}] normal...");
 
             // Authentication by token
             if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
@@ -373,14 +373,14 @@ namespace SimpleRemoteMethods.ServerSide
             else
                 throw new RemoteException(ErrorCode.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
 
-            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] connected...", tokenInfo.UserName, clientIp));
+            RaiseLogRecord(LogType.Debug, $"User [{tokenInfo.UserName}][{clientIp}] connected...");
 
             if (MethodCall != null)
             {
                 var beforeMethodCallEventArgs = new RequestEventArgs(request, clientIp, tokenInfo.UserName, tokenInfo.Token);
                 MethodCall(this, beforeMethodCallEventArgs);
                 if (beforeMethodCallEventArgs.ProhibitMethodExecution)
-                    throw new RemoteException(ErrorCode.AccessDenied, string.Format("Access to method [{0}] denied for user [{1}][{2}]", request.Method, tokenInfo.UserName, clientIp));
+                    throw new RemoteException(ErrorCode.AccessDenied, $"Access to method [{request.Method}] denied for user [{tokenInfo.UserName}][{clientIp}]");
             }
 
             // Try to get method info and call
@@ -407,7 +407,7 @@ namespace SimpleRemoteMethods.ServerSide
             else
                 SendResponse(callInfo.Result, request.Method, context);
 
-            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] executed method [{2}]...", tokenInfo.UserName, clientIp, request.Method));
+            RaiseLogRecord(LogType.Debug, $"User [{tokenInfo.UserName}][{clientIp}] executed method [{request.Method}]...");
         }
 
         private void HandleUserTokenRequest(UserTokenRequest request, HttpListenerContext context)
@@ -425,7 +425,7 @@ namespace SimpleRemoteMethods.ServerSide
                 !RequestChecker.IsNewRequest(request.RequestId))
                 throw new RemoteException(ErrorCode.RequestIdFabrication);
 
-            RaiseLogRecord(LogType.Debug, string.Format("Ip [{0}] request id [{1}] normal (user token request)...", clientIp, request.RequestId));
+            RaiseLogRecord(LogType.Debug, $"Ip [{clientIp}] request id [{request.RequestId}] normal (user token request)...");
 
             // Authentication by login/password
             if (!AuthenticationValidator.Authenticate(request.Login, request.Password))
@@ -441,13 +441,13 @@ namespace SimpleRemoteMethods.ServerSide
                 throw new RemoteException(ErrorCode.LoginOrPasswordInvalid, clientIp);
             }
 
-            RaiseLogRecord(LogType.Debug, string.Format("User [{0}][{1}] password authentication success...", request.Login, clientIp));
+            RaiseLogRecord(LogType.Debug, $"User [{request.Login}][{clientIp}] password authentication success...");
 
             var newToken = TokenDistributor.RequestToken(request.Login, clientIp);
 
             SendUserTokenResponse(newToken, context);
 
-            RaiseLogRecord(LogType.Info, string.Format("Server issued new token [{0}] for user [{1}][{2}]...", newToken, request.Login, clientIp));
+            RaiseLogRecord(LogType.Info, $"Server issued new token [{newToken}] for user [{request.Login}][{clientIp}]...");
         }
 
         private void SendResponse(object result, string method, HttpListenerContext context)
@@ -516,7 +516,7 @@ namespace SimpleRemoteMethods.ServerSide
                 _connectionsCount++;
                 if (_connectionsCount >= MaxConcurrentCalls && _startedInternal)
                 {
-                    RaiseLogRecord(LogType.Info, string.Format(" ** Too many connections ({0}). Server suspend.", _connectionsCount));
+                    RaiseLogRecord(LogType.Info, $" ** Too many connections ({_connectionsCount}). Server suspend.");
                     StopInternal();
                 }
             }
@@ -529,7 +529,7 @@ namespace SimpleRemoteMethods.ServerSide
                 _connectionsCount--;
                 if (_connectionsCount <= _callsCountToStartServerAfterSuspend && !_startedInternal && Started)
                 {
-                    RaiseLogRecord(LogType.Info, string.Format(" ** Connections count normal. Server continues to work.", _connectionsCount));
+                    RaiseLogRecord(LogType.Info, " ** Connections count normal. Server continues to work.");
                     StartAsyncInternal();
                 }
             }
