@@ -7,14 +7,15 @@ using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.Test.ClientSide
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             Thread.Sleep(2000);
 
             //TestClient_Forbidden();
-            //TestClient_MaxConcurrentCalls();
+            TestClient_MaxConcurrentCalls();
+            //TestClient_ConnectionLease();
             //TestClient_BruteforceChecker();
             //TestClient_TokenExpiredTest();
             //TestClient_RequestIdFabricationTest();
@@ -31,14 +32,14 @@ namespace SimpleRemoteMethods.Test.ClientSide
             //TestClient_https();
             //TestClient_StrArray();
             //TestClient_StrArray2();
-            TestClient_LongData();
+            //TestClient_LongData();
 
             Console.ReadKey();
         }
 
-        private static TestClientGenerated CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234")
+        private static TestClientGenerated CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234", string host = "192.168.1.200")
         {
-            var client = new TestClientGenerated("192.168.1.200", 8082, false, secretCode, user, pass);
+            var client = new TestClientGenerated(host, 8082, false, secretCode, user, pass, leaseTimeout: TimeSpan.FromMinutes(1));
             return client;
         }
 
@@ -58,7 +59,9 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId + "FAKE";
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(
+                    new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
+                    request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -82,7 +85,9 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId;
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(
+                    new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
+                    request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -99,7 +104,9 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.RequestIdRepeat = requestId;
                 request.ReturnTypeName = typeof(void).FullName;
                 request.UserToken = client.Client.CurrentUserToken;
-                var res = await HttpUtils.SendRequest(new System.Net.Http.HttpClient(), client.Client.CallUri, request, "1234123412341234");
+                var res = await HttpUtils.SendRequest(
+                    new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
+                    request, "1234123412341234");
             }
             catch (RemoteException e)
             {
@@ -153,6 +160,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             var client = CreateClient(pass: "wrongpass");
 
             for (int i = 0; i <= 10; i++)
+            {
                 try
                 {
                     await client.TestMethod1();
@@ -161,20 +169,50 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 {
                     Console.WriteLine(e.ToString());
                 }
+            }
         }
 
         private static void TestClient_MaxConcurrentCalls()
         {
             var param = new TestParameter();
 
-            var action = new Action(async () => {
-                var client = CreateClient();
-                for (int i = 0; i <= 40; i++)
-                    await client.TestMethod1();
+            var client = CreateClient();
+
+            var action = new Action(async () =>
+            {
+                for (int i = 0; i <= 80; i++)
+                {
+                    try
+                    {
+                        await client.TestMethod1();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e);
+                    }
+                }
             });
 
-            for (int j = 0; j <= 10; j++)
+            for (int j = 0; j <= 40; j++)
+            {
                 new Thread(() => action()).Start();
+            }
+        }
+
+        private static void TestClient_ConnectionLease()
+        {
+            var client = CreateClient();
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
+            client.TestMethod1();
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
+            Thread.Sleep(55 * 1000);
+            for (int i = 0; i <= 80; i++)
+            {
+#pragma warning disable CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
+                client.TestMethod1();
+#pragma warning restore CS4014 // Так как этот вызов не ожидается, выполнение существующего метода продолжается до завершения вызова
+                Thread.Sleep(100);
+            }
         }
 
         private async static void TestClient_SimpleMethod()
@@ -200,7 +238,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 Console.WriteLine(e.Message);
             }
         }
-        
+
         public async static void TestClient_Ushort()
         {
             Console.WriteLine(await CreateClient().TestMethod5(5));
@@ -229,7 +267,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             var res = await CreateClient().TestMethod8(new TestParameter<TestParameter>() { Obj = new TestParameter() { Integer = 25 } });
             Console.WriteLine((res as TestParameter).Integer);
         }
-        
+
         public async static void TestClient_Forbidden()
         {
             try
@@ -250,11 +288,17 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 Console.WriteLine("Current datetime is " + DateTime.Now);
 
                 foreach (var r in res)
+                {
                     foreach (var s in r.Strs)
+                    {
                         Console.WriteLine(s);
+                    }
+                }
 
                 foreach (var r in res)
+                {
                     Console.WriteLine(r.Dyn);
+                }
             }
             catch (Exception e)
             {
@@ -296,12 +340,18 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 var strs = await CreateClient().TestMethod11(10);
                 Console.WriteLine("Total strings received: " + strs.Length);
                 foreach (var str in strs)
+                {
                     Console.WriteLine(str);
+                }
+
                 Console.WriteLine("again with 0");
                 strs = await CreateClient().TestMethod11(0);
                 Console.WriteLine("Total strings received: " + strs.Length);
                 foreach (var str in strs)
+                {
                     Console.WriteLine(str);
+                }
+
                 Console.WriteLine("again with -1");
                 strs = await CreateClient().TestMethod11(-1);
                 Console.WriteLine("Total strings received: " + (strs?.Length.ToString() ?? "nothing"));

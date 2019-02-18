@@ -9,9 +9,9 @@ namespace SimpleRemoteMethods.Test.ClientSide
     {
         public Client Client { get; }
 
-        public TestClientGenerated(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout = default(TimeSpan))
+        public TestClientGenerated(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan connectionTimeout = default(TimeSpan), TimeSpan leaseTimeout = default(TimeSpan))
         {
-            Client = new Client(host, port, ssl, secretKey, login, password, timeout);
+            Client = new Client(host, port, ssl, secretKey, login, password, connectionTimeout, leaseTimeout);
         }
 
         public async Task TestMethod1()

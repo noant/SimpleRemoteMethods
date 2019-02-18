@@ -1,18 +1,18 @@
 ﻿using System;
 using System.IO;
+using System.Net;
 using System.Net.Http;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SimpleRemoteMethods.Bases
 {
     public static class HttpUtils
     {
-        public static async Task<HttpResponseMessage> SendRequest(HttpClient client, Uri uri, byte[] content, Action<HttpRequestMessage> requestPrepared = null)
+        public static async Task<HttpResponseMessage> SendRequest(SafeHttpClient client, byte[] content, Action<HttpRequestMessage> requestPrepared = null)
         {
             try
             {
-                var message = new HttpRequestMessage(HttpMethod.Post, uri);
+                var message = new HttpRequestMessage(HttpMethod.Post, client.Uri);
                 message.Content = new StreamContent(new MemoryStream(content));
                 requestPrepared?.Invoke(message);
                 var response = await client.SendAsync(message);
@@ -24,23 +24,38 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public static async Task<Response> SendRequest(HttpClient client, Uri uri, Request request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
+        public static async Task<Response> SendRequest(SafeHttpClient client, Request request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<Request>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.Data, requestPrepared))
+            using (var httpResponse = await SendRequest(client, encrypted.Data, requestPrepared))
             {
                 responseReceived?.Invoke(httpResponse);
 
+                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    throw new RemoteException(ErrorCode.UnknownData);
+                }
+
+                if (httpResponse.StatusCode == HttpStatusCode.Unused)
+                {
+                    throw new RemoteException(ErrorCode.DecryptionErrorCode);
+                }
+
                 var content = await httpResponse.Content.ReadAsByteArrayAsync();
                 if (content == null || content.Length == 0)
+                {
                     throw new RemoteException(ErrorCode.UnknownData);
+                }
 
                 if (Encrypted<Response>.IsClass(content))
                 {
                     var encryptedResponse = new Encrypted<Response>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
+                    {
                         throw new RemoteException(ErrorCode.UnknownData);
+                    }
+
                     return response;
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
@@ -48,7 +63,10 @@ namespace SimpleRemoteMethods.Bases
                     var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
+                    {
                         throw new RemoteException(ErrorCode.UnknownData);
+                    }
+
                     throw new RemoteException(errorResponse.ErrorData);
                 }
 
@@ -56,23 +74,38 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        public static async Task<UserTokenResponse> SendUserTokenRequest(HttpClient client, Uri uri, UserTokenRequest request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
+        public static async Task<UserTokenResponse> SendUserTokenRequest(SafeHttpClient client, UserTokenRequest request, string secretKey, Action<HttpRequestMessage> requestPrepared = null, Action<HttpResponseMessage> responseReceived = null)
         {
             var encrypted = new Encrypted<UserTokenRequest>(request, secretKey);
-            using (var httpResponse = await SendRequest(client, uri, encrypted.Data, requestPrepared))
+            using (var httpResponse = await SendRequest(client, encrypted.Data, requestPrepared))
             {
                 responseReceived?.Invoke(httpResponse);
 
+                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                {
+                    throw new RemoteException(ErrorCode.UnknownData);
+                }
+
+                if (httpResponse.StatusCode == HttpStatusCode.Unused)
+                {
+                    throw new RemoteException(ErrorCode.DecryptionErrorCode);
+                }
+
                 var content = await httpResponse.Content.ReadAsByteArrayAsync();
                 if (content == null)
+                {
                     throw new RemoteException(ErrorCode.UnknownData);
+                }
 
                 if (Encrypted<UserTokenResponse>.IsClass(content))
                 {
                     var encryptedResponse = new Encrypted<UserTokenResponse>(content);
                     var response = encryptedResponse.Decrypt(secretKey);
                     if (response == null)
+                    {
                         throw new RemoteException(ErrorCode.UnknownData);
+                    }
+
                     return response;
                 }
                 else if (Encrypted<ErrorResponse>.IsClass(content))
@@ -80,7 +113,10 @@ namespace SimpleRemoteMethods.Bases
                     var encryptedErrorData = new Encrypted<ErrorResponse>(content);
                     var errorResponse = encryptedErrorData.Decrypt(secretKey);
                     if (errorResponse == null)
+                    {
                         throw new RemoteException(ErrorCode.UnknownData);
+                    }
+
                     throw new RemoteException(errorResponse.ErrorData);
                 }
 

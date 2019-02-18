@@ -1,6 +1,5 @@
 ﻿using SimpleRemoteMethods.Bases;
 using System;
-using System.IO;
 using System.Net;
 using System.Threading.Tasks;
 
@@ -19,17 +18,22 @@ namespace SimpleRemoteMethods.ServerSide
         /// Current thread request context
         /// </summary>
         public static RequestContext CurrentRequestContext => _currentRequestContext;
-        
+
         /// <summary>
         /// Create server
         /// </summary>
         /// <param name="objectMethods">Object that contains methods for remote use</param>
-        public Server(T objectMethods, bool ssl, ushort port, string secretCode)
+        /// <param name="ssl">Use HTTPS</param>
+        /// <param name="port">Server port</param>
+        /// <param name="secretCode">Secret code for AES encryption</param>
+        /// <param name="taskLimit">Max concurrent threads for server threading</param>
+        public Server(T objectMethods, bool ssl, ushort port, string secretCode, ushort taskLimit = 4)
         {
             Methods = objectMethods;
             Ssl = ssl;
             Port = port;
             SecretCode = secretCode;
+            _taskQueue = new TaskQueue(taskLimit);
         }
 
         /// <summary>
@@ -41,7 +45,10 @@ namespace SimpleRemoteMethods.ServerSide
             set
             {
                 if (value < 1)
+                {
                     throw new InvalidOperationException("MaxConcurrentCalls cannot be less than 1");
+                }
+
                 _maxConcurrentCalls = value;
                 _callsCountToStartServerAfterSuspend = (ushort)((value / 3) * 2);
             }
@@ -56,10 +63,14 @@ namespace SimpleRemoteMethods.ServerSide
             set
             {
                 if (value < 1)
+                {
                     throw new InvalidOperationException("MaxMessageLength cannot be less than 1");
+                }
+
                 _maxMessageLength = value;
             }
         }
+
         /// <summary>
         /// Object that contains methods for remote use
         /// </summary>
@@ -73,6 +84,7 @@ namespace SimpleRemoteMethods.ServerSide
             get => _authenticationValidator;
             set => _authenticationValidator = value ?? throw new ArgumentNullException("AuthenticationValidator cannot be null");
         }
+
         /// <summary>
         /// Logic for user token destribution
         /// </summary>
@@ -81,6 +93,7 @@ namespace SimpleRemoteMethods.ServerSide
             get => _tokenDistributor;
             set => _tokenDistributor = value ?? throw new ArgumentNullException("AuthenticationValidator cannot be null");
         }
+
         /// <summary>
         /// Bruteforce checker by login
         /// </summary>
@@ -89,6 +102,7 @@ namespace SimpleRemoteMethods.ServerSide
             get => _bruteforceCheckerByLogin;
             set => _bruteforceCheckerByLogin = value ?? throw new ArgumentNullException("BruteforceCheckerByLogin cannot be null");
         }
+
         /// <summary>
         /// Bruteforce checker by ip
         /// </summary>
@@ -97,6 +111,7 @@ namespace SimpleRemoteMethods.ServerSide
             get => _bruteforceCheckerByIpAddress;
             set => _bruteforceCheckerByIpAddress = value ?? throw new ArgumentNullException("BruteforceCheckerByIpAddress cannot be null");
         }
+
         /// <summary>
         /// Object for tracking and checking request id
         /// </summary>
@@ -170,7 +185,7 @@ namespace SimpleRemoteMethods.ServerSide
         /// Access to user token request
         /// </summary>
         public event EventHandler<TaggedEventArgs<UserTokenRequest>> UserTokenRequest;
-        
+
         /// <summary>
         /// Access to user token response
         /// </summary>
@@ -199,6 +214,7 @@ namespace SimpleRemoteMethods.ServerSide
         private IBruteforceChecker _bruteforceCheckerByIpAddress = new StandardBruteforceChecker();
         private RequestIdChecker _requestChecker = new RequestIdChecker();
         private readonly object _stopOrStartServerLockerOnHandle = new object();
+        private readonly TaskQueue _taskQueue;
 
         /// <summary>
         /// Start http server asynchronously
@@ -227,12 +243,11 @@ namespace SimpleRemoteMethods.ServerSide
                     try
                     {
                         _listener.Start();
-                        startError = false;
                     }
                     catch (Exception e)
                     {
-                        RaiseLogRecord(LogType.Error, e);
                         startError = true;
+                        RaiseLogRecord(LogType.Error, e);
                     }
                 }
 
@@ -259,7 +274,9 @@ namespace SimpleRemoteMethods.ServerSide
                             Stop();
                         }
                         if (context != null)
-                            Task.Run(() => HandleContext(context));
+                        {
+                            _taskQueue.Enqueue(() => HandleContext(context));
+                        }
                     }
                     RaiseLogRecord(LogType.Info, "Server stopped or suspended...");
                 }
@@ -295,10 +312,14 @@ namespace SimpleRemoteMethods.ServerSide
 
                 // Check is wait list contains current client IP
                 if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
+                {
                     throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
-                
+                }
+
                 if (context.Request.ContentLength64 > MaxRequestLength)
+                {
                     throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
+                }
 
                 var content = new byte[context.Request.ContentLength64];
                 context.Request.InputStream.Read(content, 0, content.Length);
@@ -316,7 +337,9 @@ namespace SimpleRemoteMethods.ServerSide
                     HandleUserTokenRequest(request, context);
                 }
                 else
+                {
                     throw new RemoteException(ErrorCode.UnknownData, clientIp);
+                }
             }
             catch (RemoteException remoteException)
             {
@@ -334,44 +357,30 @@ namespace SimpleRemoteMethods.ServerSide
             }
         }
 
-        private byte[] GetBytes(Stream stream)
-        {
-            var maxLength = (int)MaxRequestLength;
-
-            using (var ms = new MemoryStream())
-            {
-                byte[] buffer = new byte[1024];
-                int readCount = 1;
-                while (readCount > 0)
-                {
-                    readCount = stream.Read(buffer, 0, Math.Min(buffer.Length, maxLength));
-                    ms.Write(buffer, 0, readCount);
-                    maxLength -= readCount;
-                    if (maxLength < 0)
-                        throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
-                }
-                return ms.ToArray();
-            }
-        }
-
         private void HandleRequest(Request request, HttpListenerContext context)
         {
             UserRequest?.Invoke(this, new TaggedEventArgs<Request>(request));
 
             var clientIp = context.Request.RemoteEndPoint.Address.ToString();
-            
+
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
+            {
                 throw new RemoteException(ErrorCode.RequestIdFabrication);
+            }
 
             RaiseLogRecord(LogType.Debug, $"Client [{clientIp}] request id [{request.RequestId}] normal...");
 
             // Authentication by token
             if (TokenDistributor.Authenticate(request.UserToken, out TokenInfo tokenInfo))
+            {
                 _currentRequestContext = new RequestContext(request, tokenInfo.UserName, clientIp);
+            }
             else
+            {
                 throw new RemoteException(ErrorCode.UserTokenExpired, tokenInfo?.UserName ?? "/", clientIp);
+            }
 
             RaiseLogRecord(LogType.Debug, $"User [{tokenInfo.UserName}][{clientIp}] connected...");
 
@@ -380,7 +389,9 @@ namespace SimpleRemoteMethods.ServerSide
                 var beforeMethodCallEventArgs = new RequestEventArgs(request, clientIp, tokenInfo.UserName, tokenInfo.Token);
                 MethodCall(this, beforeMethodCallEventArgs);
                 if (beforeMethodCallEventArgs.ProhibitMethodExecution)
+                {
                     throw new RemoteException(ErrorCode.AccessDenied, $"Access to method [{request.Method}] denied for user [{tokenInfo.UserName}][{clientIp}]");
+                }
             }
 
             // Try to get method info and call
@@ -392,20 +403,30 @@ namespace SimpleRemoteMethods.ServerSide
 
             // Check if method not exist
             if (callInfo.MethodNotFound)
+            {
                 throw new RemoteException(ErrorCode.MethodNotFound, tokenInfo.UserName, clientIp);
+            }
 
             // Check parameters conflict
             if (callInfo.MoreThanOneMethodFound)
+            {
                 throw new RemoteException(ErrorCode.MoreThanOneMethodFound, tokenInfo.UserName, clientIp);
+            }
 
             // If target method threw an exception
             if (callInfo.CallException != null)
+            {
                 throw new RemoteException(ErrorCode.InternalServerError, tokenInfo.UserName, clientIp, callInfo.CallException);
+            }
 
             if (callInfo.IsArray)
+            {
                 SendResponse(callInfo.ResultArray, request.Method, context);
+            }
             else
+            {
                 SendResponse(callInfo.Result, request.Method, context);
+            }
 
             RaiseLogRecord(LogType.Debug, $"User [{tokenInfo.UserName}][{clientIp}] executed method [{request.Method}]...");
         }
@@ -418,12 +439,16 @@ namespace SimpleRemoteMethods.ServerSide
 
             // Check is wait list contains current client login
             if (BruteforceCheckerByLogin.IsWaitListContains(clientIp))
+            {
                 throw new RemoteException(ErrorCode.BruteforceSuspicion, request.Login, clientIp);
+            }
 
             // Handle request id fabrication
             if (request.RequestId != request.RequestIdRepeat ||
                 !RequestChecker.IsNewRequest(request.RequestId))
+            {
                 throw new RemoteException(ErrorCode.RequestIdFabrication);
+            }
 
             RaiseLogRecord(LogType.Debug, $"Ip [{clientIp}] request id [{request.RequestId}] normal (user token request)...");
 
@@ -432,11 +457,15 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 // Handle bruteforce suspicion by ip
                 if (BruteforceCheckerByIpAddress.CheckIsBruteforce(clientIp))
+                {
                     throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
+                }
 
                 // Handle bruteforce suspicion by login
                 if (BruteforceCheckerByLogin.CheckIsBruteforce(request.Login))
+                {
                     throw new RemoteException(ErrorCode.BruteforceSuspicion, request.Login, clientIp);
+                }
 
                 throw new RemoteException(ErrorCode.LoginOrPasswordInvalid, clientIp);
             }
@@ -460,11 +489,13 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendResponse(Array resultArr, string method, HttpListenerContext context)
         {
             SendResponse(
-                new Response() {
+                new Response()
+                {
                     ResultArray = resultArr as object[],
                     IsEmptyArray = resultArr != null && resultArr.Length == 0 ? (bool?)true : null,
                     Method = method,
-                    ServerTime = DateTime.Now },
+                    ServerTime = DateTime.Now
+                },
                 context);
         }
 
@@ -485,10 +516,30 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendErrorResponse(ErrorResponse response, HttpListenerContext context)
         {
             ErrorServerResponse?.Invoke(this, new TaggedEventArgs<ErrorResponse>(response));
-            var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
-            var bytes = encryptedResponse.Data;
-            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
-            context.Response.OutputStream.Close();
+            try
+            {
+                if (response.ErrorData.Code == ErrorCode.UnknownData)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+                    context.Response.Close();
+                }
+                if (response.ErrorData.Code == ErrorCode.DecryptionErrorCode)
+                {
+                    context.Response.StatusCode = (int)HttpStatusCode.Unused;
+                    context.Response.Close();
+                }
+                else
+                {
+                    var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
+                    var bytes = encryptedResponse.Data;
+                    context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+                    context.Response.OutputStream.Close();
+                }
+            }
+            catch (Exception e)
+            {
+                RaiseLogRecord(LogType.Error, e);
+            }
         }
 
         private void SendResponse(Response response, HttpListenerContext context)
@@ -542,7 +593,9 @@ namespace SimpleRemoteMethods.ServerSide
         public void Dispose()
         {
             if (Started)
+            {
                 Stop();
+            }
         }
     }
 }

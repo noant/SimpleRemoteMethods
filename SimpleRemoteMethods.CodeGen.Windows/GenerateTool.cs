@@ -47,9 +47,9 @@ namespace SimpleRemoteMethods.CodeGen.Windows
             codeLines.Add("    {");
             codeLines.Add("        public Client Client { get; }");
             codeLines.Add(string.Empty);
-            codeLines.Add($"        public {generatedClassName}(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout = default(TimeSpan))");
+            codeLines.Add($"        public {generatedClassName}(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan connectionTimeout = default(TimeSpan), TimeSpan leaseTimeout = default(TimeSpan))");
             codeLines.Add("        {");
-            codeLines.Add("            Client = new Client(host, port, ssl, secretKey, login, password, timeout);");
+            codeLines.Add("            Client = new Client(host, port, ssl, secretKey, login, password, connectionTimeout, leaseTimeout);");
             codeLines.Add("        }");
 
             foreach (var method in methods)

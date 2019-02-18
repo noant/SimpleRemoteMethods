@@ -29,7 +29,7 @@ namespace SimpleRemoteMethods.ClientSide
             set => ServicePointManager.ServerCertificateValidationCallback = value;
         }
 
-        private HttpClient _httpClient;
+        private SafeHttpClient _httpClient;
 
         /// <summary>
         /// Constructor
@@ -40,14 +40,10 @@ namespace SimpleRemoteMethods.ClientSide
         /// <param name="secretKey">Secret code to encrypt data</param>
         /// <param name="login">User login name</param>
         /// <param name="password">User password</param>
-        /// <param name="timeout">Connection timeout</param>
-        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan timeout = default(TimeSpan))
+        /// <param name="connectionTimeout">Connection timeout (default is 1 minute)</param>
+        /// <param name="leaseTimeout">Connection lease timeout (default is 1 hour)</param>
+        public Client(string host, ushort port, bool ssl, string secretKey, string login, string password, TimeSpan connectionTimeout = default(TimeSpan), TimeSpan leaseTimeout = default(TimeSpan))
         {
-            _httpClient = new HttpClient();
-
-            if (timeout != default(TimeSpan))
-                _httpClient.Timeout = timeout;
-
             Host = host ?? throw new RemoteException(ErrorCode.DecryptionErrorCode, "Host cannot be null");
             Port = port;
             Ssl = ssl;
@@ -56,8 +52,16 @@ namespace SimpleRemoteMethods.ClientSide
             Password = password;
 
             CallUri = new Uri($@"{(ssl ? "https" : "http")}://{host}:{port}");
+
+            if (connectionTimeout == default(TimeSpan))
+                connectionTimeout = TimeSpan.FromMinutes(1);
+
+            if (leaseTimeout == default(TimeSpan))
+                leaseTimeout = TimeSpan.FromHours(1);
+
+            _httpClient = new SafeHttpClient(CallUri, connectionTimeout, leaseTimeout);
         }
-        
+
         /// <summary>
         /// Uri of server
         /// </summary>
@@ -106,7 +110,12 @@ namespace SimpleRemoteMethods.ClientSide
         /// <summary>
         /// Get connection timeout
         /// </summary>
-        public TimeSpan Timeout => _httpClient.Timeout;
+        public TimeSpan ConnectionTimeout => _httpClient.ConnectionTimeout;
+
+        /// <summary>
+        /// Get lease timeout
+        /// </summary>
+        public TimeSpan LeaseTimeout => _httpClient.LeaseTimeout;
 
         /// <summary>
         /// Access to low-level request
@@ -248,7 +257,7 @@ namespace SimpleRemoteMethods.ClientSide
         private async Task<Response> SendRequest(string methodName, string returnTypeName, object[] parameters)
         {
             var request = PrepareRequest(methodName, returnTypeName, parameters);
-            var response = await HttpUtils.SendRequest(_httpClient, CallUri, request, SecretKey, RaiseUserRequest, RaiseServerResponse);
+            var response = await HttpUtils.SendRequest(_httpClient, request, SecretKey, RaiseUserRequest, RaiseServerResponse);
             LastCallServerTime = response.ServerTime;
             return response;
         }
@@ -290,7 +299,7 @@ namespace SimpleRemoteMethods.ClientSide
                 request.RequestId =
                     request.RequestIdRepeat = Guid.NewGuid().ToString();
 
-                var response = await HttpUtils.SendUserTokenRequest(_httpClient, CallUri, request, SecretKey);
+                var response = await HttpUtils.SendUserTokenRequest(_httpClient, request, SecretKey);
                 NewUserTokenIssued?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(response));
                 CurrentUserToken = response.UserToken;
             }
