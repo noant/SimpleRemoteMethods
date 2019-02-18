@@ -21,36 +21,41 @@ namespace SimpleRemoteMethods.Bases
         public SafeHttpClient(Uri uri, TimeSpan connectionTimeout, TimeSpan leaseTimeout)
         {
             if (leaseTimeout < TimeSpan.FromMinutes(1))
+            {
                 throw new ArgumentException("LeaseTimeout cannot be less than 1 minute");
+            }
 
             Uri = uri;
             ConnectionTimeout = connectionTimeout;
             LeaseTimeout = leaseTimeout;
         }
 
-        public async Task<HttpResponseMessage> SendAsync(HttpRequestMessage message)
+        public async Task<HttpResponseMessage> SendAsync(HttpContent content, Action<HttpRequestMessage> requestPrepared = null)
         {
             try
             {
-                return await SendAsyncInternal(message);
+                return await SendAsyncInternal(content, requestPrepared);
             }
             catch (HttpRequestException e)
                 when (e.InnerException is WebException we &&
-                        (we.Status == WebExceptionStatus.NameResolutionFailure || 
+                        (we.Status == WebExceptionStatus.NameResolutionFailure ||
                          we.Status == WebExceptionStatus.Timeout ||
                          we.Status == WebExceptionStatus.ConnectFailure))
             {
                 RecreateClient();
-                return await SendAsyncInternal(message);
+                return await SendAsyncInternal(content, requestPrepared);
             }
         }
 
-        private async Task<HttpResponseMessage> SendAsyncInternal(HttpRequestMessage message)
+        private async Task<HttpResponseMessage> SendAsyncInternal(HttpContent content, Action<HttpRequestMessage> requestPrepared = null)
         {
             var client = GetClient();
             try
             {
                 _disposeTracker.BeginUse(client);
+                var message = new HttpRequestMessage(HttpMethod.Post, Uri);
+                requestPrepared?.Invoke(message);
+                message.Content = content;
                 return await client.SendAsync(message);
             }
             finally
@@ -64,7 +69,10 @@ namespace SimpleRemoteMethods.Bases
             lock (_getClientLocker)
             {
                 if (_client == null || DateTime.Now - _clientCreateDateTime > LeaseTimeout)
+                {
                     RecreateClient();
+                }
+
                 return _client;
             }
         }
@@ -72,13 +80,21 @@ namespace SimpleRemoteMethods.Bases
         private void RecreateClient()
         {
             if (_clientRecreatingNow)
-                lock (_recreateClientLocker) return;
+            {
+                lock (_recreateClientLocker)
+                {
+                    return;
+                }
+            }
 
             lock (_recreateClientLocker)
             {
                 _clientRecreatingNow = true;
                 if (_client != null)
+                {
                     _disposeTracker.DisposeWhenUseIsComplete(_client);
+                }
+
                 _client = new HttpClient();
                 _client.Timeout = ConnectionTimeout;
                 _clientCreateDateTime = DateTime.Now;

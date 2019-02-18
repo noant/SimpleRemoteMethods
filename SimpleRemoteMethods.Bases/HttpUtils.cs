@@ -12,11 +12,8 @@ namespace SimpleRemoteMethods.Bases
         {
             try
             {
-                var message = new HttpRequestMessage(HttpMethod.Post, client.Uri);
-                message.Content = new StreamContent(new MemoryStream(content));
-                requestPrepared?.Invoke(message);
-                var response = await client.SendAsync(message);
-                return response;
+                var httpContent = new StreamContent(new MemoryStream(content));
+                return await client.SendAsync(httpContent, requestPrepared);
             }
             catch (Exception e)
             {

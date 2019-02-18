@@ -43,15 +43,8 @@ namespace SimpleRemoteMethods.ServerSide
             _currentThreadsCount++;
             try
             {
-                while (_actions.Count != 0)
+                while (_actions.TryDequeue(out Action action))
                 {
-                    _actions.TryDequeue(out Action action);
-
-                    if (action == null)
-                    {
-                        break;
-                    }
-
                     action();
                 }
             }

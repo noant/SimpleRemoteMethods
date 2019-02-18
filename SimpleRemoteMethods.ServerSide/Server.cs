@@ -532,8 +532,10 @@ namespace SimpleRemoteMethods.ServerSide
                 {
                     var encryptedResponse = new Encrypted<ErrorResponse>(response, SecretCode);
                     var bytes = encryptedResponse.Data;
+                    context.Response.ContentLength64 = bytes.Length;
                     context.Response.OutputStream.Write(bytes, 0, bytes.Length);
                     context.Response.OutputStream.Close();
+                    context.Response.Close();
                 }
             }
             catch (Exception e)
@@ -547,8 +549,10 @@ namespace SimpleRemoteMethods.ServerSide
             ServerResponse?.Invoke(this, new TaggedEventArgs<Response>(response));
             var encryptedResponse = new Encrypted<Response>(response, SecretCode);
             var bytes = encryptedResponse.Data;
+            context.Response.ContentLength64 = bytes.Length;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
+            context.Response.Close();
         }
 
         private void SendUserTokenResponse(UserTokenResponse tokenResponse, HttpListenerContext context)
@@ -556,8 +560,10 @@ namespace SimpleRemoteMethods.ServerSide
             ServerUserTokenResponse?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(tokenResponse));
             var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
             var bytes = encryptedResponse.Data;
+            context.Response.ContentLength64 = bytes.Length;
             context.Response.OutputStream.Write(bytes, 0, bytes.Length);
             context.Response.OutputStream.Close();
+            context.Response.Close();
         }
 
         private void HandleConnectionBegin()
