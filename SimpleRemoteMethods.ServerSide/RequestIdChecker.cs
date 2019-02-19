@@ -9,44 +9,60 @@ namespace SimpleRemoteMethods.ServerSide
     /// </summary>
     public class RequestIdChecker
     {
+        private readonly List<string> _tempList = new List<string>();
         private List<string> _requestIds = new List<string>();
         private string _requestIdsPath;
 
         public RequestIdChecker()
         {
-            var assemblyFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-            _requestIdsPath = Path.Combine(assemblyFolder, "requestIds");
-            if (File.Exists(_requestIdsPath))
-                _requestIds.AddRange(File.ReadLines(_requestIdsPath));
+            Initialize();
         }
 
         /// <summary>
-        /// Checke where is requeest was executed
+        /// Check where is requeest was executed
         /// </summary>
         /// <param name="requestId"></param>
         /// <returns></returns>
         public virtual bool IsNewRequest(string requestId)
         {
-            if (!_requestIds.Contains(requestId))
+            lock (_requestIds)
             {
-                AppendRequestId(requestId);
-                return true;
+                if (!_requestIds.Contains(requestId))
+                {
+                    AppendRequestId(requestId);
+                    return true;
+                }
+                return false;
             }
-            return false;
         }
 
         protected virtual void AppendRequestId(string requestId)
         {
             _requestIds.Add(requestId);
-            lock (_requestIds)
+            _tempList.Add(requestId);
+            if (_requestIds.Count > 10000)
             {
-                if (_requestIds.Count > 10000)
+                _requestIds.RemoveRange(0, 5000);
+                File.WriteAllText(_requestIdsPath, requestId);
+            }
+            else
+            {
+                // Flush
+                if (_tempList.Count > 100)
                 {
-                    _requestIds.RemoveRange(0, 5000);
-                    File.WriteAllText(_requestIdsPath, requestId);
+                    File.AppendAllLines(_requestIdsPath, _tempList);
+                    _tempList.Clear();
                 }
-                else
-                    File.AppendAllLines(_requestIdsPath, new[] { requestId });
+            }
+        }
+
+        protected virtual void Initialize()
+        {
+            var assemblyFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            _requestIdsPath = Path.Combine(assemblyFolder, "requestIds");
+            if (File.Exists(_requestIdsPath))
+            {
+                _requestIds.AddRange(File.ReadLines(_requestIdsPath));
             }
         }
     }

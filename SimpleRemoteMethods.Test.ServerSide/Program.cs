@@ -7,9 +7,9 @@ using System.Threading;
 
 namespace SimpleRemoteMethods.Test.ServerSide
 {
-    class Program
+    internal class Program
     {
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
             TestServer();
 
@@ -32,10 +32,12 @@ namespace SimpleRemoteMethods.Test.ServerSide
             if (ssl)
             {
                 var certHash = ServerHelper.GetInstalledCertificates().First().Hash;
-                ServerHelper.PrepareHttpsServer(server, certHash);
+                ServerHelper.PrepareHttpsServer(server, certHash, "testId");
             }
             else
-                ServerHelper.PrepareHttpServer(server);
+            {
+                ServerHelper.PrepareHttpServer(server, "testId");
+            }
 
             return server;
         }
@@ -43,7 +45,9 @@ namespace SimpleRemoteMethods.Test.ServerSide
         private static void Server_MethodCall(object sender, RequestEventArgs e)
         {
             if (e.Request.Method == "TestMethod1" && e.UserName == "usr2")
+            {
                 e.ProhibitMethodExecution = true;
+            }
         }
 
         private static void TestServer()
