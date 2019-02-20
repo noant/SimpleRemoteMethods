@@ -61,7 +61,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void PrepareHttpsServer<T>(Server<T> server, string certificateHash, string appId)
         {
             var serverAddress = $"https://localhost:{server.Port}";
-            var firewallRuleName = (typeof(T).Name).Replace("'", string.Empty) + $"_{appId}_http";
+            var firewallRuleName = (typeof(T).Name).Replace("'", string.Empty) + $"_{appId}_https";
 
             void log(string message) => RaiseLog(server, message);
 

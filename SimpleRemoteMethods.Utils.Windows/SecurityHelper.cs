@@ -105,12 +105,10 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="port"></param>
         public static void AddFirewallRuleForPort(string ruleName, ushort port, Action<string> resultLogging)
         {
-            var codeBase = Assembly.GetEntryAssembly().CodeBase;
-            var uri = new UriBuilder(codeBase);
-            var exePath = Path.GetFullPath(Uri.UnescapeDataString(uri.Path));
-
             var commandRemove = $"advfirewall firewall delete rule name=\"{ruleName}\"";
-            var commandAdd = $"advfirewall firewall add rule name=\"{ruleName}\" action=allow dir=in protocol=TCP localport={port} program=\"{exePath}\"";
+            var commandAdd =
+                $"advfirewall firewall add rule name=\"{ruleName}\" action=allow " +
+                $"dir=in enable=yes protocol=TCP localport={port} program=system";
             var netshpath = Path.Combine(Environment.SystemDirectory, "netsh.exe");
             ExecuteProcess(netshpath, commandRemove, resultLogging: resultLogging);
             ExecuteProcess(netshpath, commandAdd, resultLogging: resultLogging);
@@ -122,7 +120,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="ruleName"></param>
         public static void RemoveFirewallRule(string ruleName, Action<string> resultLogging)
         {
-            var commandRemove = $"advfirewall firewall delete rule name = \"{ruleName}\"";
+            var commandRemove = $"advfirewall firewall delete rule name=\"{ruleName}\"";
             var netshpath = Path.Combine(Environment.SystemDirectory, "netsh.exe");
             ExecuteProcess(netshpath, commandRemove, resultLogging: resultLogging);
         }
