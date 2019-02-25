@@ -14,10 +14,18 @@ namespace SimpleRemoteMethods.ServerSide
         [ThreadStatic]
         private static RequestContext _currentRequestContext;
 
+        [ThreadStatic]
+        private static ulong _currentContextRequestHandle;
+
         /// <summary>
         /// Current thread request context
         /// </summary>
         public static RequestContext CurrentRequestContext => _currentRequestContext;
+
+        /// <summary>
+        /// Current thread request context handle
+        /// </summary>
+        public static ulong CurrentContextRequestHandle => _currentContextRequestHandle;
 
         /// <summary>
         /// Create server
@@ -201,20 +209,22 @@ namespace SimpleRemoteMethods.ServerSide
         /// </summary>
         public event EventHandler<RequestEventArgs> MethodCall;
 
-        private HttpListener _listener;
         private bool _startedInternal = false;
-        private ushort _connectionsCount = 0;
-        private MethodsCaller<T> _caller = new MethodsCaller<T>();
-        private ushort _maxConcurrentCalls = 20;
-        private ushort _callsCountToStartServerAfterSuspend = 12;
-        private long _maxMessageLength = 20000;
+        private HttpListener _listener;
         private IAuthenticationValidator _authenticationValidator = new AuthenticationValidatorStub();
-        private ITokenDistributor _tokenDistributor = new StandardTokenDistributor();
-        private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
         private IBruteforceChecker _bruteforceCheckerByIpAddress = new StandardBruteforceChecker();
-        private RequestIdChecker _requestChecker = new RequestIdChecker();
+        private IBruteforceChecker _bruteforceCheckerByLogin = new StandardBruteforceChecker();
+        private ITokenDistributor _tokenDistributor = new StandardTokenDistributor();
+        private long _maxMessageLength = 20000;
+        private MethodsCaller<T> _caller = new MethodsCaller<T>();
+        private readonly object _contextHandleCounterLocker = new object();
         private readonly object _stopOrStartServerLockerOnHandle = new object();
         private readonly TaskQueue _taskQueue;
+        private RequestIdChecker _requestChecker = new RequestIdChecker();
+        private ulong _contextHandleCounter = 0;
+        private ushort _callsCountToStartServerAfterSuspend = 12;
+        private ushort _connectionsCount = 0;
+        private ushort _maxConcurrentCalls = 20;
 
         /// <summary>
         /// Start http server asynchronously
@@ -233,11 +243,23 @@ namespace SimpleRemoteMethods.ServerSide
             StartAsyncInternal();
         }
 
+        private ulong NewHandle()
+        {
+            lock (_contextHandleCounterLocker)
+            {
+                if (_contextHandleCounter == ulong.MaxValue) // Why not?
+                {
+                    _contextHandleCounter = 0;
+                }
+                return _contextHandleCounter++;
+            }
+        }
+
         private void StartAsyncInternal()
         {
             new Task(() =>
             {
-                bool startError = false;
+                var startError = false;
                 if (!_listener.IsListening)
                 {
                     try
@@ -261,21 +283,30 @@ namespace SimpleRemoteMethods.ServerSide
                     }
 
                     _startedInternal = true;
-                    while (Started && _startedInternal)
+                    while (Started && _startedInternal && _listener.IsListening)
                     {
                         HttpListenerContext context = null;
+                        var contextHandle = NewHandle();
                         try
                         {
+                            RaiseLogRecord(LogType.Debug, $"Listener get context action begin (handle {contextHandle}).");
                             context = _listener.GetContext();
+                            RaiseLogRecord(LogType.Debug, $"Listener get context action end (handle {contextHandle}).");
                         }
                         catch (Exception e)
                         {
-                            RaiseLogRecord(LogType.Error, e);
+                            RaiseLogRecord(LogType.Error, e, $"Listener get context action error (handle {contextHandle})!");
                             Stop();
+                            break;
                         }
-                        if (context != null)
+                        if (context == null)
                         {
-                            _taskQueue.Enqueue(() => HandleContext(context));
+                            RaiseLogRecord(LogType.Debug, $"Listener context is NULL (handle {contextHandle}).");
+                        }
+                        else
+                        {
+                            RaiseLogRecord(LogType.Debug, $"Listener context handling begin (handle {contextHandle}).");
+                            _taskQueue.Enqueue(() => HandleContext(context, contextHandle));
                         }
                     }
                     RaiseLogRecord(LogType.Info, "Server stopped or suspended...");
@@ -298,61 +329,74 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void StopInternal() => _startedInternal = false;
 
-        private void HandleContext(HttpListenerContext context)
+        private void HandleContext(HttpListenerContext context, ulong handle)
         {
+            // Set number of context into ThreadStatic field
+            // and use it as CurrentContextRequestHandle
+            _currentContextRequestHandle = handle;
+
             HandleConnectionBegin();
 
             try
             {
-                HttpRequestCustomHandling?.Invoke(this, new TaggedEventArgs<HttpListenerContext>(context));
-
-                var clientIp = context.Request.RemoteEndPoint.Address.ToString();
-
-                RaiseLogRecord(LogType.Debug, $"Client [{clientIp}] connected...");
-
-                // Check is wait list contains current client IP
-                if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
+                using (context.Request.InputStream)
                 {
-                    throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
-                }
+                    context.Response.SendChunked = true;
 
-                if (context.Request.ContentLength64 > MaxRequestLength)
-                {
-                    throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
-                }
+                    HttpRequestCustomHandling?.Invoke(this, new TaggedEventArgs<HttpListenerContext>(context));
 
-                var content = new byte[context.Request.ContentLength64];
-                context.Request.InputStream.Read(content, 0, content.Length);
+                    var clientIp = context.Request.RemoteEndPoint.Address.ToString();
 
-                // If encrypted data is Request
-                if (Encrypted<Request>.IsClass(content))
-                {
-                    var request = new Encrypted<Request>(content).Decrypt(SecretCode);
-                    HandleRequest(request, context);
-                }
-                // If ecnrypted data is UserTokenRequest
-                else if (Encrypted<UserTokenRequest>.IsClass(content))
-                {
-                    var request = new Encrypted<UserTokenRequest>(content).Decrypt(SecretCode);
-                    HandleUserTokenRequest(request, context);
-                }
-                else
-                {
-                    throw new RemoteException(ErrorCode.UnknownData, clientIp);
+                    RaiseLogRecord(LogType.Debug, $"Client [{clientIp}] connected...");
+
+                    // Check is wait list contains current client IP
+                    if (BruteforceCheckerByIpAddress.IsWaitListContains(clientIp))
+                    {
+                        throw new RemoteException(ErrorCode.BruteforceSuspicion, "by IP", clientIp);
+                    }
+
+                    if (context.Request.ContentLength64 > MaxRequestLength)
+                    {
+                        throw new RemoteException(ErrorCode.TooMuchData, $"Data length cannot be more than {MaxRequestLength} bytes");
+                    }
+
+                    if (context.Request.ContentLength64 == 0)
+                    {
+                        throw new RemoteException(ErrorCode.UnknownData, clientIp);
+                    }
+
+                    var content = new byte[context.Request.ContentLength64];
+                    context.Request.InputStream.Read(content, 0, content.Length);
+
+                    if (Encrypted<Request>.IsClass(content)) // If encrypted data is Request
+                    {
+                        var request = new Encrypted<Request>(content).Decrypt(SecretCode);
+                        HandleRequest(request, context);
+                    }
+                    else if (Encrypted<UserTokenRequest>.IsClass(content)) // If ecnrypted data is UserTokenRequest
+                    {
+                        var request = new Encrypted<UserTokenRequest>(content).Decrypt(SecretCode);
+                        HandleUserTokenRequest(request, context);
+                    }
+                    else
+                    {
+                        throw new RemoteException(ErrorCode.UnknownData, clientIp);
+                    }
                 }
             }
             catch (RemoteException remoteException)
             {
-                RaiseLogRecord(LogType.Info, remoteException);
+                RaiseLogRecord(LogType.Info, remoteException, $"Context handling error (handle {handle})");
                 SendErrorResponse(remoteException.Data, context);
             }
             catch (Exception exception)
             {
-                RaiseLogRecord(LogType.Error, exception);
+                RaiseLogRecord(LogType.Error, exception, $"Context handling error (handle {handle})");
                 SendErrorResponse(new RemoteExceptionData(ErrorCode.InternalServerError, exception.Message), context);
             }
             finally
             {
+                RaiseLogRecord(LogType.Debug, $"Listener context handling end (handle {handle})...");
                 HandleConnectionEnd();
             }
         }
@@ -482,7 +526,12 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendResponse(object result, string method, HttpListenerContext context)
         {
             SendResponse(
-                new Response() { Result = result, Method = method, ServerTime = DateTime.Now },
+                new Response()
+                {
+                    Result = result,
+                    Method = method,
+                    ServerTime = DateTime.Now
+                },
                 context);
         }
 
@@ -502,14 +551,20 @@ namespace SimpleRemoteMethods.ServerSide
         private void SendErrorResponse(RemoteExceptionData exceptionData, HttpListenerContext context)
         {
             SendErrorResponse(
-                new ErrorResponse() { ErrorData = exceptionData },
+                new ErrorResponse()
+                {
+                    ErrorData = exceptionData
+                },
                 context);
         }
 
         private void SendUserTokenResponse(string newToken, HttpListenerContext context)
         {
             SendUserTokenResponse(
-                new UserTokenResponse() { UserToken = newToken },
+                new UserTokenResponse()
+                {
+                    UserToken = newToken
+                },
                 context);
         }
 
@@ -518,15 +573,20 @@ namespace SimpleRemoteMethods.ServerSide
             ErrorServerResponse?.Invoke(this, new TaggedEventArgs<ErrorResponse>(response));
             try
             {
+                RaiseLogRecord(
+                    LogType.Debug,
+                    $"Sending error response " +
+                    $"(handle {CurrentContextRequestHandle})" +
+                    $"({response.ErrorData.Message})" +
+                    $"(Code: {response.ErrorData.Code})");
+
                 if (response.ErrorData.Code == ErrorCode.UnknownData)
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    context.Response.Close();
                 }
                 if (response.ErrorData.Code == ErrorCode.DecryptionErrorCode)
                 {
                     context.Response.StatusCode = (int)HttpStatusCode.Unused;
-                    context.Response.Close();
                 }
                 else
                 {
@@ -534,18 +594,23 @@ namespace SimpleRemoteMethods.ServerSide
                     var bytes = encryptedResponse.Data;
                     context.Response.ContentLength64 = bytes.Length;
                     context.Response.OutputStream.Write(bytes, 0, bytes.Length);
-                    context.Response.OutputStream.Close();
-                    context.Response.Close();
                 }
+                context.Response.OutputStream.Close();
+                context.Response.Close();
             }
             catch (Exception e)
             {
-                RaiseLogRecord(LogType.Error, e);
+                RaiseLogRecord(LogType.Error, e, $"Error while send error respose (handle {CurrentContextRequestHandle})");
             }
         }
 
         private void SendResponse(Response response, HttpListenerContext context)
         {
+            RaiseLogRecord(
+                LogType.Debug,
+                $"Sending response " +
+                $"(handle {CurrentContextRequestHandle})" +
+                $"({response.Method})");
             ServerResponse?.Invoke(this, new TaggedEventArgs<Response>(response));
             var encryptedResponse = new Encrypted<Response>(response, SecretCode);
             var bytes = encryptedResponse.Data;
@@ -557,6 +622,11 @@ namespace SimpleRemoteMethods.ServerSide
 
         private void SendUserTokenResponse(UserTokenResponse tokenResponse, HttpListenerContext context)
         {
+            RaiseLogRecord(
+                LogType.Debug,
+                $"Sending user-token response " +
+                $"(handle {CurrentContextRequestHandle})" +
+                $"({tokenResponse.UserToken})");
             ServerUserTokenResponse?.Invoke(this, new TaggedEventArgs<UserTokenResponse>(tokenResponse));
             var encryptedResponse = new Encrypted<UserTokenResponse>(tokenResponse, SecretCode);
             var bytes = encryptedResponse.Data;
@@ -592,7 +662,7 @@ namespace SimpleRemoteMethods.ServerSide
             }
         }
 
-        private void RaiseLogRecord(LogType type, Exception exception) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, exception));
+        private void RaiseLogRecord(LogType type, Exception exception, string message = "") => LogRecord?.Invoke(this, new LogRecordEventArgs(type, exception, message));
 
         private void RaiseLogRecord(LogType type, string message) => LogRecord?.Invoke(this, new LogRecordEventArgs(type, message));
 

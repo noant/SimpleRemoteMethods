@@ -1,5 +1,4 @@
 ﻿using System;
-using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -12,8 +11,7 @@ namespace SimpleRemoteMethods.Bases
         {
             try
             {
-                var httpContent = new StreamContent(new MemoryStream(content));
-                return await client.SendAsync(httpContent, requestPrepared);
+                return await client.SendAsync(content, requestPrepared);
             }
             catch (Exception e)
             {

@@ -33,25 +33,28 @@ namespace SimpleRemoteMethods.ServerSide
             {
                 if (_currentThreadsCount < TasksLimit)
                 {
-                    Task.Run(() => TaskProcess());
+                    BeginTaskProcess();
                 }
             }
         }
 
-        private void TaskProcess()
+        private void BeginTaskProcess()
         {
             _currentThreadsCount++;
-            try
+            Task.Run(() =>
             {
-                while (_actions.TryDequeue(out Action action))
+                try
                 {
-                    action();
+                    while (_actions.TryDequeue(out Action action))
+                    {
+                        action();
+                    }
                 }
-            }
-            finally
-            {
-                _currentThreadsCount--;
-            }
+                finally
+                {
+                    _currentThreadsCount--;
+                }
+            });
         }
     }
 }

@@ -5,18 +5,19 @@ namespace SimpleRemoteMethods.ServerSide
     /// <summary>
     /// Information about log item
     /// </summary>
-    public class LogRecordEventArgs: EventArgs
+    public class LogRecordEventArgs : EventArgs
     {
-        public LogRecordEventArgs(LogType type, Exception exception)
+        public LogRecordEventArgs(LogType type, Exception exception, string message = "")
         {
             Type = type;
             Exception = exception;
+            Message = message;
         }
 
-        public LogRecordEventArgs(LogType type, string message)
+        public LogRecordEventArgs(LogType type, string message) :
+            this(type, null, message)
         {
-            Type = type;
-            Message = message;
+            //
         }
 
         /// <summary>
@@ -32,6 +33,6 @@ namespace SimpleRemoteMethods.ServerSide
         /// <summary>
         /// Custom message
         /// </summary>
-        public string Message{ get; }
+        public string Message { get; }
     }
 }

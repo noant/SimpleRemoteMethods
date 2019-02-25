@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ namespace SimpleRemoteMethods.Bases
             LeaseTimeout = leaseTimeout;
         }
 
-        public async Task<HttpResponseMessage> SendAsync(HttpContent content, Action<HttpRequestMessage> requestPrepared = null)
+        public async Task<HttpResponseMessage> SendAsync(byte[] content, Action<HttpRequestMessage> requestPrepared = null)
         {
             try
             {
@@ -47,16 +48,20 @@ namespace SimpleRemoteMethods.Bases
             }
         }
 
-        private async Task<HttpResponseMessage> SendAsyncInternal(HttpContent content, Action<HttpRequestMessage> requestPrepared = null)
+        private async Task<HttpResponseMessage> SendAsyncInternal(byte[] content, Action<HttpRequestMessage> requestPrepared = null)
         {
             var client = GetClient();
             try
             {
                 _disposeTracker.BeginUse(client);
-                var message = new HttpRequestMessage(HttpMethod.Post, Uri);
-                requestPrepared?.Invoke(message);
-                message.Content = content;
-                return await client.SendAsync(message);
+                using (var message = new HttpRequestMessage(HttpMethod.Post, Uri))
+                using (var ms = new MemoryStream(content))
+                using (var httpContent = new StreamContent(ms))
+                {
+                    requestPrepared?.Invoke(message);
+                    message.Content = httpContent;
+                    return await client.SendAsync(message);
+                }
             }
             finally
             {
@@ -90,6 +95,7 @@ namespace SimpleRemoteMethods.Bases
             lock (_recreateClientLocker)
             {
                 _clientRecreatingNow = true;
+
                 if (_client != null)
                 {
                     _disposeTracker.DisposeWhenUseIsComplete(_client);
@@ -98,6 +104,7 @@ namespace SimpleRemoteMethods.Bases
                 _client = new HttpClient();
                 _client.Timeout = ConnectionTimeout;
                 _clientCreateDateTime = DateTime.Now;
+
                 _clientRecreatingNow = false;
             }
         }
