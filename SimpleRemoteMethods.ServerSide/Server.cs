@@ -580,13 +580,9 @@ namespace SimpleRemoteMethods.ServerSide
                     $"({response.ErrorData.Message})" +
                     $"(Code: {response.ErrorData.Code})");
 
-                if (response.ErrorData.Code == ErrorCode.UnknownData)
+                if (StatusCodesMatching.SRMToHttp.ContainsKey(response.ErrorData.Code))
                 {
-                    context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                }
-                if (response.ErrorData.Code == ErrorCode.DecryptionErrorCode)
-                {
-                    context.Response.StatusCode = (int)HttpStatusCode.Unused;
+                    context.Response.StatusCode = (int)StatusCodesMatching.SRMToHttp[response.ErrorData.Code];
                 }
                 else
                 {

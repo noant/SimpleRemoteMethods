@@ -26,14 +26,9 @@ namespace SimpleRemoteMethods.Bases
             {
                 responseReceived?.Invoke(httpResponse);
 
-                if (httpResponse.StatusCode == HttpStatusCode.BadRequest)
+                if (StatusCodesMatching.HttpToSRM.ContainsKey(httpResponse.StatusCode))
                 {
-                    throw new RemoteException(ErrorCode.UnknownData);
-                }
-
-                if (httpResponse.StatusCode == HttpStatusCode.Unused)
-                {
-                    throw new RemoteException(ErrorCode.DecryptionErrorCode);
+                    throw new RemoteException(StatusCodesMatching.HttpToSRM[httpResponse.StatusCode]);
                 }
 
                 var content = await httpResponse.Content.ReadAsByteArrayAsync();

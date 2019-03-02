@@ -14,13 +14,13 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Thread.Sleep(2000);
 
             //TestClient_Forbidden();
-            TestClient_MaxConcurrentCalls();
+            //TestClient_MaxConcurrentCalls();
             //TestClient_ConnectionLease();
             //TestClient_BruteforceChecker();
             //TestClient_TokenExpiredTest();
             //TestClient_RequestIdFabricationTest();
             //TestClient_RequestIdFabricationTest2();
-            //TestClient_WrongSecretKey();
+            TestClient_WrongSecretKey();
             //TestClient_WrongSecretKey2();
             //TestClient_SimpleMethod();
             //TestClient_ExceptionTransfer();
@@ -37,7 +37,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
             Console.ReadKey();
         }
 
-        private static TestClientGenerated CreateClient(string user = "usr", string pass = "123123", string secretCode = "1234123412341234", string host = "192.168.1.200")
+        private static TestClientGenerated CreateClient(string user = "usr", string pass = "123123", string secretCode = "0123456789123456", string host = "192.168.1.200")
         {
             var client = new TestClientGenerated(host, 8082, false, secretCode, user, pass, leaseTimeout: TimeSpan.FromMinutes(1));
             return client;
@@ -61,7 +61,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.UserToken = client.Client.CurrentUserToken;
                 var res = await HttpUtils.SendRequest(
                     new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
-                    request, "1234123412341234");
+                    request, "0123456789123456");
             }
             catch (RemoteException e)
             {
@@ -87,7 +87,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.UserToken = client.Client.CurrentUserToken;
                 var res = await HttpUtils.SendRequest(
                     new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
-                    request, "1234123412341234");
+                    request, "0123456789123456");
             }
             catch (RemoteException e)
             {
@@ -106,7 +106,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
                 request.UserToken = client.Client.CurrentUserToken;
                 var res = await HttpUtils.SendRequest(
                     new SafeHttpClient(client.Client.CallUri, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1)),
-                    request, "1234123412341234");
+                    request, "0123456789123456");
             }
             catch (RemoteException e)
             {
@@ -133,7 +133,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var client = CreateClient(secretCode: "1234123412341235");
+                var client = CreateClient(secretCode: "0123456789123457");
                 await client.TestMethod1();
             }
             catch (Exception e)
@@ -146,7 +146,7 @@ namespace SimpleRemoteMethods.Test.ClientSide
         {
             try
             {
-                var client = CreateClient(secretCode: "1234123412341235333"); // More than 16 symbols
+                var client = CreateClient(secretCode: "0123456789123456666"); // More than 16 symbols
                 await client.TestMethod1();
             }
             catch (Exception e)

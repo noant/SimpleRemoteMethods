@@ -21,7 +21,7 @@ namespace SimpleRemoteMethods.Test.ServerSide
 
         private static Server<ITestContracts> CreateServer(bool ssl = false)
         {
-            var server = new Server<ITestContracts>(new TestContracts(), ssl, 8082, "1234123412341234");
+            var server = new Server<ITestContracts>(new TestContracts(), ssl, 8082, "0123456789123456");
             server.AuthenticationValidator = new AuthenticationValidatorTest();
             server.MaxConcurrentCalls = 5;
             server.TokenDistributor.TokenLifetime = TimeSpan.FromMinutes(1);

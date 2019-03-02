@@ -15,7 +15,7 @@ namespace SimpleRemoteMethods.CrossTest
             InitializeComponent();
         }
 
-        private static ClientTest CreateClient(string pass = "123123", string secretCode = "1234123412341234", bool ssl = false)
+        private static ClientTest CreateClient(string pass = "123123", string secretCode = "0123456789123457", bool ssl = false)
         {
             var client = new Client("192.168.1.200", ssl ? (ushort)4041 : (ushort)8082, ssl, secretCode, "usr", pass);
             var testClient = new ClientTest() { Client = client };
