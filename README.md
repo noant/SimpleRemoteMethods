@@ -81,3 +81,28 @@ server.StartAsync();
   - [certificateHash] - string, hash of target https certificate.
   - [appUniqueId] - string, custom id of current app, used for firewall rules naming.
 
+
+#### Authentication
+
+Interface IAuthentication allows to override standard authentication stub. 
+
+```csharp
+public interface IAuthenticationValidator
+{
+    bool Authenticate(string userName, string password);
+}
+```
+```csharp
+public class MyCustomAuthentication
+{
+    public bool Authenticate(string userName, string password)
+    {
+        return userName == "anton" && password = "password";
+    }
+}
+```
+```csharp
+var server = new Server<IContracts>(contractsObject, useHttps, serverPort, secretKey);
+server.AuthenticationValidator = new MyCustomAuthentication();
+server.StartAsync();
+```
