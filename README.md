@@ -97,7 +97,7 @@ public class MyCustomAuthentication
 {
     public bool Authenticate(string userName, string password)
     {
-        return userName == "anton" && password = "password";
+        return userName == "someuser" && password = "password1";
     }
 }
 ```
@@ -105,4 +105,54 @@ public class MyCustomAuthentication
 var server = new Server<IContracts>(contractsObject, useHttps, serverPort, secretKey);
 server.AuthenticationValidator = new MyCustomAuthentication();
 server.StartAsync();
+```
+
+#### Token distribution
+
+Instead of passing user/password every time remote method called, the user token is transferred. Token distribution proceed automatically.
+
+Change token lifetime example:
+```csharp
+server.TokenDistributor.TokenLifetime = TimeSpan.FromHours(24);
+```
+Revoke user token (when password/login changed, etc):
+
+```csharp
+server.TokenDistributor.RevokeToken("someuser");
+```
+
+To all other, there is a possibile to override standard token distributor by creating class< derived from [ITokenDistributor](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.ServerSide/ITokenDistributor.cs)
+
+```csharp    /// <summary>
+    /// Class that conains logic for user token distribution
+    /// </summary>
+    public interface ITokenDistributor
+    {
+        /// <summary>
+        /// Returns true if the token was created and it is still alive
+        /// </summary>
+        /// <param name="token"></param>
+        /// <param name="tokenInfo">Info about token (user name, etc)</param>
+        /// <returns></returns>
+        bool Authenticate(string token, out TokenInfo tokenInfo);
+
+        /// <summary>
+        /// Creates new token for user/ip
+        /// </summary>
+        /// <param name="userName"></param>
+        /// <param name="clientIp"></param>
+        /// <returns>token string</returns>
+        string RequestToken(string userName, string clientIp);
+
+        /// <summary>
+        /// Cancel user token
+        /// </summary>
+        /// <param name="userName"></param>
+        void RevokeToken(string userName);
+
+        /// <summary>
+        /// The time interval while the token is alive
+        /// </summary>
+        TimeSpan TokenLifetime { get; set; }
+}
 ```
