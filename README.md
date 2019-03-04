@@ -1,7 +1,7 @@
 # SimpleRemoteMethods
 A project that allows to easily create a secure and cross-platform client-server part of project. Based on protobuf serialization and HttpListener.
 
-### Server
+#### Start server
 Create and start server:
 
 ```csharp
