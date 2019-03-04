@@ -254,7 +254,7 @@ public event EventHandler<RequestEventArgs> MethodCall;
 
 ### MaxConcurrentCalls
 
-If concurrent calls count more than MaxConcurrentCalls property value, than server suspend to accepting all income connections.
+If concurrent calls count exceeds the value of the MaxConcurrentCalls property, the server suspends receiving all incoming connections.
 
 ```csharp
 server.MaxConcurrentCalls = 20; // Default value
