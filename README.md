@@ -340,4 +340,4 @@ catch (Exception)
 }
 ```
 
-All error codes there: [ErrorCode](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.Bases/ErrorCode.cs).
+All error codes: [ErrorCode](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.Bases/ErrorCode.cs).
