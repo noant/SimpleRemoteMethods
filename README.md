@@ -60,7 +60,7 @@ Example how it looks in Lazurite.MainDomain in build events:
 srmGen.exe bin\$(ConfigurationName)\netstandard2.0\Lazurite.MainDomain.dll Lazurite.MainDomain.IServer Lazurite.MainDomain LazuriteClient ..\Lazurite.MainDomain\LazuriteClient.cs
 ```
 
-Generated class example: [Lazurite.MainDomain.LazuriteClient.cs](https://github.com/noant/Lazurite/blob/master/Lazurite/Lazurite.MainDomain/LazuriteClient.cs)
+Generated class example: [LazuriteClient.cs](https://github.com/noant/Lazurite/blob/master/Lazurite/Lazurite.MainDomain/LazuriteClient.cs)
 
 ### Prepare Windows for server
 
