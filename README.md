@@ -121,9 +121,10 @@ Revoke user token (when password/login changed, etc):
 server.TokenDistributor.RevokeToken("someuser");
 ```
 
-To all other, there is a possibile to override standard token distributor by creating a class, derived from [ITokenDistributor](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.ServerSide/ITokenDistributor.cs):
+To all other, there is possible to override standard token distributor by creating a class, derived from [ITokenDistributor](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.ServerSide/ITokenDistributor.cs):
 
-```csharp    /// <summary>
+```csharp
+/// <summary>
 /// Class that conains logic for user token distribution
 /// </summary>
 public interface ITokenDistributor
