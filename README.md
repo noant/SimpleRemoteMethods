@@ -64,7 +64,7 @@ Generated class example: [Lazurite.MainDomain.LazuriteClient.cs](https://github.
 
 ### Prepare Windows for server
 
-In Windows, you need to perform a lot of actions to start the server: add a rule for a firewall, reserve an address, bind a certificate to a port. SimpleRemoteMethods has a library to do this automatically. Add SimpleRemoteMethods.Utils.Windows.dll and run PrepareHttpServer<T> or PrepareHttpsServer<T> method after creating the server. Example:
+In Windows, you need to perform a lot of actions to start the server: add a rule for a firewall, reserve an address, bind a certificate to a port. SimpleRemoteMethods has a library to do this automatically. Add SimpleRemoteMethods.Utils.Windows.dll and run [PrepareHttpServer<T>] or [PrepareHttpsServer<T>] method after creating the server. Example:
 
 ```csharp
 var server = new Server<IContracts>(contractsObject, true, serverPort, secretKey);
@@ -267,3 +267,77 @@ Maximum length of request in bytes.
 ```csharp
 server.MaxMessageLength = 20000; // Default value
 ```
+
+### Current request context
+
+Current request context allows you to determine current caller, user-ip and other useful information about the execution of the current method.
+
+Example:
+
+```csharp
+public interface IContracts
+{
+    [Remote]
+    void TestMethod1();
+    
+    [Remote]
+    int TestMethod2(string str);
+}
+```
+
+```csharp
+public class Contracts: IContracts 
+{
+    private void WriteUserInfo()
+    {
+        var currentUser = Server<IContracts>.CurrentRequestContext.UserName;
+        var currentUserIp = Server<IContracts>.CurrentRequestContext.ClientIp;        
+        Console.WriteLine(currentUser + " " + currentUserIp);
+    }
+
+    public void TestMethod1()
+    {
+        WriteUserInfo();
+    }
+    
+    public int TestMethod2(string str)
+    {
+        WriteUserInfo();
+        return str.Length;
+    }
+}
+```
+
+### Exceptions handling
+
+There is one class to determine which exception was thrown on the server: [RemoteException](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.Bases/RemoteException.cs).
+
+
+```csharp
+try
+{
+    await client.TestMethod1()
+}
+catch (RemoteException e) when (e.Code == ErrorCode.LoginOrPasswordInvalid)
+{
+    // Do something when user/password is invalid
+}
+catch (RemoteException e) when (e.Code == ErrorCode.UnknownData || e.Code == ErrorCode.DecryptionErrorCode)
+{
+    // Do something when secret key is invalid
+}
+catch (RemoteException e) when (e.Code == ErrorCode.BruteforceSuspicion)
+{
+    // Do something when there is bruteforce suspition
+}
+catch (RemoteException)
+{
+    // Other actions
+}
+catch (Exception)
+{
+    // Other actions
+}
+```
+
+All error codes there: [ErrorCode](https://github.com/noant/SimpleRemoteMethods/blob/master/SimpleRemoteMethods.Bases/ErrorCode.cs).
