@@ -39,12 +39,26 @@ public class Contracts: IContracts
         Console.WriteLine("TestMethod1");
     }
     
-    public int TestMethod2(string str)
+    public TestObjectClass TestMethod2(string str)
     {
-        return str.Length;
+        return new TestObjectClass();
     }
 }
 ```
+
+```csharp
+[ProtoContract]
+public class TestObjectClass 
+{
+    [ProtoMember(1)]
+    public int TestProperty1 { get; set; }
+    
+    [ProtoMember(2)]
+    public string TestProperty2 { get; set; }
+}
+```
+
+[More](https://github.com/mgravell/protobuf-net/blob/master/README.md) information about protobuf serialization: [mgravell/protobuf-net](https://github.com/mgravell/protobuf-net).
 
 ### Client class generation
 
