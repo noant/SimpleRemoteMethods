@@ -269,7 +269,7 @@ public event EventHandler<RequestEventArgs> MethodCall;
 
 ### MaxConcurrentCalls
 
-If concurrent calls count exceeds the value of the MaxConcurrentCalls property, the server suspends receiving all incoming connections.
+If concurrent calls count exceeds the value of the MaxConcurrentCalls property, server suspends receiving all incoming connections.
 
 ```csharp
 server.MaxConcurrentCalls = 20; // Default value
@@ -285,7 +285,7 @@ server.MaxMessageLength = 20000; // Default value
 
 ### Current request context
 
-Current request context allows you to determine current caller, user-ip and other useful information about the execution of the current method.
+Current request context allows you to determine current caller, user-ip and other useful information about execution of current method.
 
 Example:
 
