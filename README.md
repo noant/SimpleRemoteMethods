@@ -8,10 +8,10 @@ Create and start server:
 var server = new Server<IContracts>(contractsObject, useHttps, serverPort, secretKey);
 server.StartAsync();
 ```
-  - [IContracts] is contracts interface.
-  - [contractsObject] - a class object derived from a contract interface that contains target methods.
-  - [useHttps] - boolean, use https.
-  - [serverPort] - server port.
+  - [IContracts] is contracts interface;
+  - [contractsObject] - a class object derived from a contract interface that contains target methods;
+  - [useHttps] - boolean, use https;
+  - [serverPort] - server port;
   - [secretKey] - key for intermediate AES encryption.
   
 ### Contracts
