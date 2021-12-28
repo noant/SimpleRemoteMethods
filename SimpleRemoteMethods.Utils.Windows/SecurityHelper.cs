@@ -85,6 +85,9 @@ namespace SimpleRemoteMethods.Utils.Windows
             store.Open(OpenFlags.ReadWrite);
 
             var cert = new X509Certificate2(certificate);
+            var existing = store.Certificates.Find(X509FindType.FindByThumbprint, cert.Thumbprint, false);
+            if (existing?.Count > 0)
+                store.RemoveRange(existing);
             store.Add(cert);
             store.Close();
             var hash = cert.GetCertHashString();
