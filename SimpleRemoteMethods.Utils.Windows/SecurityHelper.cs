@@ -1,9 +1,7 @@
-﻿using SslCertBinding.Net;
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
@@ -30,20 +28,13 @@ namespace SimpleRemoteMethods.Utils.Windows
 
             if (cert == null)
             {
-                throw new Exception($"Cannot found certificate [{certificateHash}]");
+                throw new Exception($"Cannot find certificate [{certificateHash}]");
             }
 
             var appid = ((GuidAttribute)Assembly.GetExecutingAssembly().GetCustomAttributes(typeof(GuidAttribute), true)[0]).Value;
 
-            var certificateBindingConfiguration = new CertificateBindingConfiguration();
-
-            certificateBindingConfiguration.Bind(
-                new CertificateBinding(
-                    certificateHash,
-                    StoreName.My,
-                    new IPEndPoint(new IPAddress(new byte[] { 0, 0, 0, 0 }), port),
-                    Guid.Parse(appid))
-            );
+            var command = $"http add sslcert ipport=0.0.0.0:{port} certhash={certificateHash} appid={{{appid}}}";
+            ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), command, resultLogging: resultLogging);
         }
 
         /// <summary>
@@ -53,7 +44,7 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void UnbindCertificatesFromPort(ushort port, Action<string> resultLogging)
         {
             var command = "http delete sslcert ipport=0.0.0.0:" + port;
-            ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), command);
+            ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), command, resultLogging: resultLogging);
         }
 
         /// <summary>
@@ -63,7 +54,8 @@ namespace SimpleRemoteMethods.Utils.Windows
         public static void ReserveUrl(string address, Action<string> resultLogging)
         {
             RemoveAddressReservation(address, resultLogging: resultLogging);
-            var commandString = $@"http add urlacl url={address} user={Environment.UserDomainName}\{Environment.UserName}";
+            var normalizedAddress = address.TrimEnd('/') + "/";
+            var commandString = $@"http add urlacl url=""{normalizedAddress}"" user=""{Environment.UserDomainName}\{Environment.UserName}""";
 
             ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), commandString, resultLogging: resultLogging);
         }
@@ -74,7 +66,8 @@ namespace SimpleRemoteMethods.Utils.Windows
         /// <param name="address"></param>
         public static void RemoveAddressReservation(string address, Action<string> resultLogging)
         {
-            var commandString = $@"http delete urlacl url={address.Replace("https://", "http://")}";
+            var normalizedAddress = address.TrimEnd('/') + "/";
+            var commandString = $@"http delete urlacl url=""{normalizedAddress}""";
             ExecuteProcess(Path.Combine(Environment.SystemDirectory, "netsh.exe"), commandString, resultLogging: resultLogging);
         }
 
